@@ -5,6 +5,7 @@ author: daanbreur
 description: 
 google_site_verification_content: # The 'content' tag for site verification
 google_analytics: # Your Google Analytics Tracking ID
+disqus_forum_shortname: daanbreurblog
 
 # Usernames and badges
 htb_badge_no: # Go to the HackTheBox site and copy your ID
