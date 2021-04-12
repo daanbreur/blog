@@ -3,6 +3,7 @@ layout: writeup
 category: THM
 chall_description: https://tryhackme-images.s3.amazonaws.com/room-icons/d0b3851085d530abbff79210cea04b5d.png
 tags: tryhackme web python privilegeescalation jinja2 pythonpathhijacking
+points: 60
 date: 2021-04-11
 comments: true
 ---
