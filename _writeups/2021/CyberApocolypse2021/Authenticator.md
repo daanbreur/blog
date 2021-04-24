@@ -9,15 +9,16 @@ date: 2021-04-24
 comments: true
 ---
 
-We find a zip file with one file inside of it. When using `file authenticator` we can see its a ELF binary
+We find a zip file with one file inside of it. When using ``file ./authenticator`` we can see its a ELF binary
 
 <pre 
   class="command-line" 
-  data-prompt="daan@DESKTOP-OGEP42C /mnt/d/Eigenaar/Desktop/CTF's/2021/CA2021/Reversing/Authenticator_COMPLETED" 
+  data-prompt="daan@DESKTOP-OGEP42C ~/CA2021/Reversing/Authenticator_COMPLETED" 
   data-output="1"
-><code class="language-bash">file authenticator
-authenticator: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=66286657ca5a06147189b419238b2971b11c72db, not stripped</code>
-</pre>
+><code class="language-bash">
+file ./authenticator
+authenticator: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=66286657ca5a06147189b419238b2971b11c72db, not stripped
+</code></pre>
 
 Lets open it in ghidra and use the decompiler
 
@@ -39,9 +40,9 @@ return 1 in the main function is incorrect pincode, lets make a loop to decode t
 
 I am going to use cpp because i only have to change a few lines from the checkpin function to make it work.
 
-<pre data-src="assets/CTFs/CyberApocolypse2021/Authenticator/solver.cpp" 
+<pre data-src="/assets/CTFs/CyberApocolypse2021/Authenticator/solver.cpp" 
   data-download-link 
-  data-download-link-label="get_app" 
+  data-download-link-label="" 
 ><code class="language-cpp">
 #include<iostream>
 
