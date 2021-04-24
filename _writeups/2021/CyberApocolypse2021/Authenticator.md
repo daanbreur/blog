@@ -14,29 +14,32 @@ We find a zip file with one file inside of it. When using ``file ./authenticator
 <pre 
   class="command-line" 
   data-prompt="daan@DESKTOP-OGEP42C ~/CA2021/Reversing/Authenticator_COMPLETED" 
-  data-output="1"
+  data-output="1-3"
 ><code class="language-bash">
 file ./authenticator
-authenticator: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=66286657ca5a06147189b419238b2971b11c72db, not stripped
+authenticator: ELF 64-bit LSB shared object, x86-64, 
+version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, 
+for GNU/Linux 3.2.0, BuildID[sha1]=66286657ca5a06147189b419238b2971b11c72db, not stripped
 </code></pre>
 
 Lets open it in ghidra and use the decompiler
 
-#IMAGE HERE#
+![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra.png)
 
 Now that we have the file open in ghidra lets search for the *main* function and open it in the decompiler.
 
-#IMAGE HERE (src: ghidra_decompiled_main) #
+![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra_decompiled_main.png)
 
 we see it will ask for a passcode thats our goal lets go the the function *checkpin*, that is being called with our input.
 
-#IMAGE HERE (src: ghirda_decompiled_checkpin)#
+![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghirda_decompiled_checkpin.png)
 
 Hmm lets make it more readable by rename variables.
 It looks like it will loop over the length of the string and check if `"}a:Vh|}a:g}8j=}89gV<p<}:dV8<Vg9}V<9V<:j|{:"[index] ^ 9U` is equal to the character on the input, if not it will break and return 1.
 return 1 in the main function is incorrect pincode, lets make a loop to decode that string
 
 #IMAGE HERE (src: ghidra_decompiled_checkpin_annotated)# 
+![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra_decompiled_checkpin_annotated.png)
 
 I am going to use cpp because i only have to change a few lines from the checkpin function to make it work.
 
