@@ -1,27 +1,23 @@
 ---
-layout: writeup
-category: CyberApocolypse2021
-chall_description: 
+layout: post
+title: "[Writeup] CyberApocolypse 2021 | Wild Goose Hunt"
+tags: web nosqlinjection mongodb
 points: 300
 solves: 515
-tags: web nosqlinjection mongodb
-date: 2021-04-24
-comments: true
 ---
 
-The webpage is just an username and password input field. 
-After checking the source that we could download we were able to discover that the password of the admin user is also the **flag**.
-Also we see that its a **mongodb database**, meaby we have to do some **nosqlinjection**, after using burp to check the request we see its not using json but urlencoded formdata.
+Solves: {{ page.solves }} \| Points: {{ page.points }}
 
-After searching for a poc i found that you can use ``password[%24regex]=`` to check with an regex, if you just use ``^.*`` as regex it will pass because it matches everything.
-This way we can leak the password because if you put a character that isnt in in that place in the password in front of the .* it will fail, if its in the password it will pass.
+The webpage is just an username and password input field. 
+After checking the source that we could download we were able to discover that the password of the admin user is also the *flag*.
+Also we see that its a *mongodb database*, meaby we have to do some *nosqlinjection*, after using burp to check the request we see its not using json but urlencoded formdata.
+
+After searching for a poc i found that you can use `password[%24regex]=` to check with an regex, if you just use `^.*` as regex it will pass because it matches everything.
+This way we can leak the password because if you put a character that isn't in in that place in the password in front of the `.*` it will fail, if its in the password it will pass.
 
 Now we can bruteforce this, i made a little script using python.
 
-<pre data-src="/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solve.py" 
-  data-download-link 
-  data-download-link-label="" 
-><code class="language-py">
+```python
 #!/usr/bin/env python
 import os
 import string
@@ -47,15 +43,16 @@ while Solved != True:
             break
 
 print("")
-print(f" [FLAG] The flag is: {workString}")
-</code></pre>
+print(f"[FLAG] The flag is: {workString}")
+```
+^ A download for this script can be found [here](/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solve.py)
 
 Now that the solver is running ill explain what it does.
 ![](/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solver_running.png)
 
 This code will loop over every character, if the character is correct than it will add it to the working password.
 Then it will go the the next place in the password and try every character, until the last character is found.
-It knows if its correct by checking if the ``logged`` value in the returned jsondata is ``1``.
+It knows if its correct by checking if the `logged` value in the returned jsondata is `1`.
 
 
 After running the script it found the flag.
@@ -66,5 +63,4 @@ After running the script it found the flag.
 Thanks for reading my writeup!
 
 ---
-sources: </br>
-[NOSQL INJECTION OPERATORS](https://infosecwriteups.com/nosql-injection-8732c2140576)
+sources: [NOSQL INJECTION OPERATORS](https://infosecwriteups.com/nosql-injection-8732c2140576)

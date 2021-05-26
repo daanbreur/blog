@@ -1,26 +1,23 @@
 ---
-layout: writeup
-category: CyberApocolypse2021
-chall_description: 
+layout: post
+title: "[Writeup] CyberApocolypse 2021 | Authenticator"
+tags: reversing encryption
 points: 300
 solves: 988
-tags: reversing encryption
-date: 2021-04-24
-comments: true
 ---
+
+Solves: {{ page.solves }} \| Points: {{ page.points }}
 
 We find a zip file with one file inside of it. When using ``file ./authenticator`` we can see its a ELF binary
 
-<pre 
-  class="command-line" 
-  data-prompt="daan@DESKTOP-OGEP42C ~/CA2021/Reversing/Authenticator_COMPLETED" 
-  data-output="1-2-3"
-><code class="language-bash">
+```bash
 file ./authenticator
+```
+```log
 authenticator: ELF 64-bit LSB shared object, x86-64, 
 version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, 
 for GNU/Linux 3.2.0, BuildID[sha1]=66286657ca5a06147189b419238b2971b11c72db, not stripped
-</code></pre>
+```
 
 Lets open it in ghidra and use the decompiler
 
@@ -42,11 +39,8 @@ return 1 in the main function is incorrect pincode, lets make a loop to decode t
 
 I am going to use cpp because i only have to change a few lines from the checkpin function to make it work.
 
-<pre data-src="/assets/CTFs/CyberApocolypse2021/Authenticator/solver.cpp" 
-  data-download-link 
-  data-download-link-label="" 
-><code class="language-cpp">
-#include &lt;iostream&gt;
+```cpp
+#include <iostream>
 
 using namespace std;
 int main()
@@ -55,13 +49,13 @@ int main()
   index = 0;
   while( true ) {
     if (index > 42) break;
-    cout << static_cast&lt;char&gt;(("}a:Vh|}a:g}8j=}89gV&lt;p&lt;}:dV8&lt;Vg9}V&lt;9V&lt;:j|{:"[index] ^ 9U));
+    cout << static_cast<char>(("}a:Vh|}a:g}8j=}89gV<p<}:dV8<Vg9}V<9V<:j|{:"[index] ^ 9U));
     index = index + 1;
   }
   return 0;
 }
-</code>
-</pre>
+```
+^ A download for this script can be found [here](/assets/CTFs/CyberApocolypse2021/Authenticator/solver.cpp)
 
 This code will go over every character in that encoded string and doing an XOR with 9U. then it will cast that to an char and printing it to the console.
 

@@ -1,12 +1,7 @@
 ---
-layout: writeup
-category: Pentesting
-chall_description: https://www.pixelplush.dev/public/app-assets/images/logo/text.png
-points: 0
-solves: 
+layout: post
+title: "[Writeup] Pentesting | XSS in the Pixelplush Scoreboard"
 tags: xss pixelplush
-date: 2021-05-25
-comments: true
 ---
 
 This writeup is about the **XSS in the [PixelPlush](https://pixelplush.dev) Scoreboard**. 

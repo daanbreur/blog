@@ -17,7 +17,7 @@ PORT     STATE SERVICE
 ## Reconnaissance
 
 There is a wierd endpoint in the webserver that stops the http server: `/shutdown`
-The 404 page will return the folder meaby some SSTI/XSS? We know that the server runs on python it may be jinja2, lets try sending `{{3 * 3}}`. if its jinja2 it should echo 9 back to the page. and ,that worked this will be our point of entry. 
+The 404 page will return the folder meaby some SSTI/XSS? We know that the server runs on python it may be jinja2, lets try sending {% raw %}`{{3 * 3}}`{% endraw %}. if its jinja2 it should echo 9 back to the page. and ,that worked this will be our point of entry. 
 
 ## SSTI / RCE
 
@@ -30,9 +30,11 @@ Your request has been blocked.
 I think there are some filters in place, this may make it hard for us.
 First we are gonna try to get a urlparameter
 The following snippet will read the get parameter `c`
+{% raw %}
 ```
 {{request|attr('args')|attr('get')('c')}}?c= 
 ```
+{% endraw %}
 
 now that we can read c. 
 lets try running code on the machine.
