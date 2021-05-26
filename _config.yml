@@ -1,26 +1,19 @@
-theme: jekyll-dash
-plugins:
- - jekyll-feed
- - jekyll-seo-tag
- - jekyll-paginate
- - liquid-md5
- - jekyll/tagging
-
-title: Daanbreurs Blog
-author: daanbreur
-
-# required by disqus to display comments
+title: daanbreur
 url: https://blog.daanbreur.systems
+author: daanbreur
+description: >
+  Hey, I am Daan. A programmer and hacker.
+show_excerpts: false
 
-# jekyll-paginate
 paginate: 5
 paginate_path: "/blog/page:num/"
 
-# jekyll-tagging (optional)
 tag_permalink_style: pretty
 tag_page_layout: tag_page
 tag_page_dir: tag
 
+# jekyll-dash date format
+# refer to http://shopify.github.io/liquid/filters/date/ if you want to customize this
 dash:
   date_format: "%b %-d, %Y"
 
@@ -33,16 +26,19 @@ dash:
     - url: https://twitter.com/portaalg
       icon: twitter
       color: cyan
-    - url: https://github.com/daanbreur
-      icon: github
-      color: purple
-    - url: https://twitch.tv/portaalgaming
+    - url: https://www.twitch.tv/portaalgaming
       icon: twitch
       color: purple
+    - url: https://www.youtube.com/channel/UCGWs9foruVqIoEf2sLBfJAg
+      icon: youtube
+      color: red
+    - url: https://github.com/daanbreur
+      icon: github
+      color: yellow
 
-  show_author: true
-  animation_speed: 50
+# Build settings
+theme: jekyll-dash
 
-# Replaces the default avatar provider (gravatar)
-avatar_source: github
-github_username: daanbreur
+plugins:
+  - liquid-md5
+  - jekyll/tagging
