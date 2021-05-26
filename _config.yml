@@ -1,42 +1,39 @@
-remote_theme: CaptainIRS/hacker-plus-theme
+theme: jekyll-dash
 
-title: Daanbreurs Blog
-author: daanbreur
-description: Daanbreurs Blog for CTF Writeups and More
-google_site_verification_content: # The 'content' tag for site verification
-google_analytics: # Your Google Analytics Tracking ID
-disqus_forum_shortname: daanbreurblog
+# required by disqus to display comments
+url: https://blog.daanbreur.systems
 
-# Usernames and badges
-htb_badge_no: # Go to the HackTheBox site and copy your ID
-thm_badge_no: 34192
-show_thm_htb_badges_in_nav: false
+# jekyll-paginate
+paginate: 5
+paginate_path: "/blog/page:num/"
+
+# jekyll-tagging (optional)
+tag_permalink_style: pretty
+tag_page_layout: tag_page
+tag_page_dir: tag
+
+dash:
+  date_format: "%b %-d, %Y"
+
+  disqus:
+    shortname: daanbreurblog
+
+  # generate social links in footer
+  # supported colors: green, red, orange, blue, cyan, pink, teal, yellow, indigo, purple
+  social_links:
+    - url: https://twitter.com/portaalg
+			icon: twitter
+      color: cyan
+	  - url: https://github.com/daanbreur
+      icon: github
+      color: purple
+		- url: https://twitch.tv/portaalgaming
+      icon: twitch
+      color: purple
+   
+      
+  show_author: true
+
+# Replaces the default avatar provider (gravatar)
+avatar_source: github
 github_username: daanbreur
-stackoverflow: users/10564495
-twitch: portaalgaming
-twitter: portaalg
-reddit: daandevelopment
-
-
-# -------DO NOT ALTER -------#
-markdown: kramdown
-kramdown:
-   syntax_highlighter_opts:
-      disable : true
-exclude: [
-   /*/*/_problems/*,
-   scripts
-]
-plugins:
-   - jekyll-seo-tag
-   - jemoji
-   - jekyll-sitemap
-   - jekyll-github-metadata
-collections:
-   pages:
-      output: true
-      permalink: /:name
-   writeups:
-      output: true 
-   blog:
-      output: true
