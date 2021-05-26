@@ -1,4 +1,13 @@
 theme: jekyll-dash
+plugins:
+ - jekyll-feed
+ - jekyll-seo-tag
+ - jekyll-paginate
+ - liquid-md5
+ - jekyll/tagging
+
+title: Daanbreurs Blog
+author: daanbreur
 
 # required by disqus to display comments
 url: https://blog.daanbreur.systems
@@ -13,26 +22,26 @@ tag_page_layout: tag_page
 tag_page_dir: tag
 
 dash:
-  date_format: "%b %-d, %Y"
+	date_format: "%b %-d, %Y"
 
-  disqus:
-    shortname: daanbreurblog
+	disqus:
+		shortname: daanbreurblog
 
-  # generate social links in footer
-  # supported colors: green, red, orange, blue, cyan, pink, teal, yellow, indigo, purple
-  social_links:
-    - url: https://twitter.com/portaalg
+	# generate social links in footer
+	# supported colors: green, red, orange, blue, cyan, pink, teal, yellow, indigo, purple
+	social_links:
+		- url: https://twitter.com/portaalg
 			icon: twitter
-      color: cyan
-	  - url: https://github.com/daanbreur
-      icon: github
-      color: purple
+			color: cyan
+		- url: https://github.com/daanbreur
+			icon: github
+			color: purple
 		- url: https://twitch.tv/portaalgaming
-      icon: twitch
-      color: purple
-   
-      
-  show_author: true
+			icon: twitch
+			color: purple
+
+	show_author: true
+	animation_speed: 50
 
 # Replaces the default avatar provider (gravatar)
 avatar_source: github
