@@ -1,5 +1,6 @@
+# frozen_string_literal: true
+
 source 'https://rubygems.org'
 
-gem 'jekyll-dash', '~> 1.0.0'
-gem 'liquid-md5'
-gem 'jekyll-tagging'
+gem "github-pages", group: :jekyll_plugins
+gem "jekyll-github-metadata"
