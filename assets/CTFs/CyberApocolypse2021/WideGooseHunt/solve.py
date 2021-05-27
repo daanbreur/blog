@@ -23,4 +23,4 @@ while Solved != True:
             break
 
 print("")
-print(f" [FLAG] The flag is: {workString}")
+print(f"[FLAG] The flag is: {workString}")
