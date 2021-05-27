@@ -8,4 +8,5 @@ group :jekyll_plugins do
   gem 'jekyll-dash', '~> 2.0.0'
   gem 'liquid-md5'
   gem 'jekyll-tagging'
+  gem 'jekyll-analytics'
 end
