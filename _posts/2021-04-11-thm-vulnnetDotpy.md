@@ -5,9 +5,11 @@ tags: tryhackme web python privilegeescalation jinja2 pythonpathhijacking
 redirect_from: /writeups/2021/THM/vulnnetDotpy.html
 ---
 
+## Room Information
+
 Title: VulnNet: dotpy<br>
 Description: VulnNet Entertainment is back with their brand new website... and stronger?<br>
-This room is availiable at [TryHackMe VulnNet:Dotpy](https://tryhackme.com/room/vulnnetdotpy) Go to [TryHackMe](https://tryhackme.com/)
+This room is availiable at [TryHackMe VulnNet:Dotpy](https://tryhackme.com/room/vulnnetdotpy) or go to [TryHackMe](https://tryhackme.com/).
 
 ## Ports
 ```
