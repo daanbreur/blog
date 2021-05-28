@@ -4,6 +4,7 @@ title: "[Writeup] CyberApocolypse 2021 | Wild Goose Hunt"
 tags: web nosqlinjection mongodb
 points: 300
 solves: 515
+redirect_from: /writeups/2021/CyberApocolypse2021/WildGooseHunt.html
 ---
 
 Solves: {{ page.solves }} \| Points: {{ page.points }}

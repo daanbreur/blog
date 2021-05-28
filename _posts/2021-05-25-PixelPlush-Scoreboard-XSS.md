@@ -2,6 +2,7 @@
 layout: post
 title: "[Writeup] Pentesting | XSS in the Pixelplush Scoreboard"
 tags: xss pixelplush
+redirect_from: /writeups/2021/Pentesting/PixelPlush-Scoreboard-XSS.html
 ---
 
 This writeup is about the **XSS in the [PixelPlush](https://pixelplush.dev) Scoreboard**. 

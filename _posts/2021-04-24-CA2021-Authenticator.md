@@ -4,6 +4,7 @@ title: "[Writeup] CyberApocolypse 2021 | Authenticator"
 tags: reversing encryption
 points: 300
 solves: 988
+redirect_from: /writeups/2021/CyberApocolypse2021/Authenticator.html
 ---
 
 Solves: {{ page.solves }} \| Points: {{ page.points }}

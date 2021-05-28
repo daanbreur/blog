@@ -2,6 +2,7 @@
 layout: post
 title: "[Writeup] TryHackMe | VulnNet: dotpy"
 tags: tryhackme web python privilegeescalation jinja2 pythonpathhijacking
+redirect_from: /writeups/2021/THM/vulnnetDotpy.html
 ---
 
 Title: VulnNet: dotpy<br>
