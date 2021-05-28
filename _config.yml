@@ -44,6 +44,7 @@ theme: jekyll-dash
 plugins:
   - liquid-md5
   - jekyll/tagging
+  - jekyll-sitemap
 
 # Replaces the default avatar provider (gravatar)
 avatar_source: github
