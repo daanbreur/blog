@@ -10,4 +10,5 @@ group :jekyll_plugins do
   gem 'jekyll-tagging'
   gem 'jekyll-analytics'
   gem 'jekyll-sitemap'
+  gem 'jekyll-redirect-from'
 end
