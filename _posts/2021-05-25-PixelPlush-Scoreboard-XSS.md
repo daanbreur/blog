@@ -115,7 +115,7 @@ When we now open the page (or send a request to the points endpoint). And yes it
 
 
 
-Now that we know the score isn't safe, lets try to inject html into the user field. Meaby it will work.
+Now that we know the score isn't safe, lets try to inject html into the user field. Maybe it will work.
 
 ```json
 {
