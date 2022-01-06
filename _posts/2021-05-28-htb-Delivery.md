@@ -26,7 +26,7 @@ In the next image, we can see that an email is needed for mattermost.
 ![](/assets/CTFs/HTB/Delivery/mattermost-setup.png)
 
 We cant use our own email but we need an `@delivery.htb`mail address.
-How can we get an `@delivery.htb`mail address, lets check out what's on port 80 meaby we find something useful there.
+How can we get an `@delivery.htb`mail address, lets check out what's on port 80 maybe we find something useful there.
 
 
 
@@ -82,7 +82,7 @@ cat user.txt
 ## Enumeration
 
 In the home directory there is a `.mysql_history` file, this tells us there is a MySQL server running. The MySQL server may also contain password hashes.
-Now lets see if we can find the credentials for it. Meaby inside the mattermost configuration file, it can be found in `/opt/mattermost/config/config.json`
+Now lets see if we can find the credentials for it. Maybe inside the mattermost configuration file, it can be found in `/opt/mattermost/config/config.json`
 
 ```json
 "SqlSettings": {
