@@ -11,7 +11,7 @@ Solves: {{ page.solves }} \| Points: {{ page.points }}
 
 The webpage is just an username and password input field. 
 After checking the source that we could download we were able to discover that the password of the admin user is also the *flag*.
-Also we see that its a *mongodb database*, meaby we have to do some *nosqlinjection*, after using burp to check the request we see its not using json but urlencoded formdata.
+Also we see that its a *mongodb database*, Maybe we have to do some *nosqlinjection*, after using burp to check the request we see its not using json but urlencoded formdata.
 
 After searching for a poc i found that you can use `password[%24regex]=` to check with an regex, if you just use `^.*` as regex it will pass because it matches everything.
 This way we can leak the password because if you put a character that isn't in in that place in the password in front of the `.*` it will fail, if its in the password it will pass.
