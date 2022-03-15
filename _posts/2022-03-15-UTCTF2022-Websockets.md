@@ -7,7 +7,7 @@ solves: 173
 redirect_from: /writeups/2022/UTCTF/Websockets.html
 ---
 
-![](/assets/CTFs/UTCTF2022/Websockets/challange_info.png){: .modal}
+![](/assets/CTFs/UTCTF2022/Websockets/challenge_info.png){: .modal}
 
 **Websockets?** was a challenge in the web category for UTCTF 2022, in the end it has {{ page.solves }} Solves and it was worth {{ page.points }} Points. It was relatively easy.
 
