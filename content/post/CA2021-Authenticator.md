@@ -1,13 +1,10 @@
 ---
+title: 'CyberApocolypse 2021 | Authenticator'
 date: "2021-04-24T00:00:00Z"
-points: 300
-redirect_from: /writeups/2021/CyberApocolypse2021/Authenticator.html
-solves: 988
 tags: [reversing,encryption]
-title: '[Writeup] CyberApocolypse 2021 | Authenticator'
+points: 300
+solves: 988
 ---
-
-Solves: {{ page.solves }} \| Points: {{ page.points }}
 
 We find a zip file with one file inside of it. When using ``file ./authenticator`` we can see its a ELF binary
 
@@ -22,21 +19,21 @@ for GNU/Linux 3.2.0, BuildID[sha1]=66286657ca5a06147189b419238b2971b11c72db, not
 
 Lets open it in ghidra and use the decompiler
 
-![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra.png){: .modal}
+![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra.png)
 
 Now that we have the file open in ghidra lets search for the *main* function and open it in the decompiler.
 
-![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra_decompiled_main.png){: .modal}
+![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra_decompiled_main.png)
 
 we see it will ask for a passcode thats our goal lets go the the function *checkpin*, that is being called with our input.
 
-![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghirda_decompiled_checkpin.png){: .modal}
+![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghirda_decompiled_checkpin.png)
 
 Hmm lets make it more readable by rename variables.
 It looks like it will loop over the length of the string and check if `"}a:Vh|}a:g}8j=}89gV<p<}:dV8<Vg9}V<9V<:j|{:"[index] ^ 9U` is equal to the character on the input, if not it will break and return 1.
 return 1 in the main function is incorrect pincode, lets make a loop to decode that string
 
-![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra_decompiled_checkpin_annotated.png){: .modal}
+![](/assets/CTFs/CyberApocolypse2021/Authenticator/ghidra_decompiled_checkpin_annotated.png)
 
 I am going to use cpp because i only have to change a few lines from the checkpin function to make it work.
 
@@ -56,7 +53,7 @@ int main()
   return 0;
 }
 ```
-^ A download for this script can be found [here](/assets/CTFs/CyberApocolypse2021/Authenticator/solver.cpp){: .modal}
+^ A download for this script can be found [here](/assets/CTFs/CyberApocolypse2021/Authenticator/solver.cpp)
 
 This code will go over every character in that encoded string and doing an XOR with 9U. then it will cast that to an char and printing it to the console.
 

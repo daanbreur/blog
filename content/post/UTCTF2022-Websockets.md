@@ -1,13 +1,12 @@
 ---
+title: 'UTCTF 2022 | Websockets?'
 date: "2022-03-15T00:00:00Z"
-points: 335
-redirect_from: /writeups/2022/UTCTF/Websockets.html
-solves: 173
 tags: [websocket,authentication,bruteforcing]
-title: '[Writeup] UTCTF 2022 | Websockets?'
+cover:
+    image: "/assets/CTFs/UTCTF2022/Websockets/challenge_info.png"
+points: 335
+solves: 173
 ---
-
-![](/assets/CTFs/UTCTF2022/Websockets/challenge_info.png){: .modal}
 
 **Websockets?** was a challenge in the web category for UTCTF 2022, in the end it has {{ page.solves }} Solves and it was worth {{ page.points }} Points. It was relatively easy.
 
@@ -61,7 +60,7 @@ with ThreadPoolExecutor(max_workers=100) as pool:
 
 This code uses multithreading to get the correct pincode as quickly as possible. It also makes sure that the pincode is padded with zero's in front. Running this results in the following output.
 
-![](/assets/CTFs/UTCTF2022/Websockets/pincode_done.png){: .modal}
+![](/assets/CTFs/UTCTF2022/Websockets/pincode_done.png)
 
 The pincode it found is `907`.
 Lets login with this acquired pincode, and we got the flag! **utflag{w3bsock3ts}**

@@ -1,8 +1,7 @@
 ---
+title: 'Pentesting | XSS in the Pixelplush Scoreboard'
 date: "2021-05-25T00:00:00Z"
-redirect_from: /writeups/2021/Pentesting/PixelPlush-Scoreboard-XSS.html
 tags: [xss,pixelplush]
-title: '[Writeup] Pentesting | XSS in the Pixelplush Scoreboard'
 ---
 
 This writeup is about the **XSS in the [PixelPlush](https://pixelplush.dev) Scoreboard**. 

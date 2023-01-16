@@ -1,10 +1,9 @@
 ---
+title: 'CyberApocolypse 2021 | Wild Goose Hunt'
 date: "2021-04-24T00:00:00Z"
-points: 300
-redirect_from: /writeups/2021/CyberApocolypse2021/WildGooseHunt.html
-solves: 515
 tags: [web,nosqlinjection,mongodb]
-title: '[Writeup] CyberApocolypse 2021 | Wild Goose Hunt'
+points: 300
+solves: 515
 ---
 
 Solves: {{ page.solves }} \| Points: {{ page.points }}
@@ -49,7 +48,7 @@ print(f"[FLAG] The flag is: {workString}")
 ^ A download for this script can be found [here](/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solve.py)
 
 Now that the solver is running ill explain what it does.
-![](/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solver_running.png){: .modal}
+![](/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solver_running.png)
 
 This code will loop over every character, if the character is correct than it will add it to the working password.
 Then it will go the the next place in the password and try every character, until the last character is found.
@@ -58,7 +57,7 @@ It knows if its correct by checking if the `logged` value in the returned jsonda
 
 After running the script it found the flag.
 **CHTB{1_th1nk_the_4l1ens_h4ve_n0t_used_m0ng0_b3f0r3}** 
-![](/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solver_done.png){: .modal}
+![](/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solver_done.png)
 
 
 Thanks for reading my writeup!

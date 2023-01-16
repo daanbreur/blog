@@ -1,11 +1,10 @@
 ---
+title: 'HackTheBox | Delivery'
 date: "2021-05-28T00:00:00Z"
-redirect_from: /writeups/2021/HTB/Delivery.html
-tags: [hackthebox,linux,web,passwordreuse,misconfiguration]
-title: '[Writeup] HackTheBox | Delivery'
+tags: [hackthebox,linux,web,passwordreuse,misconfiguration,delivery]
+cover:
+    image: "/assets/CTFs/HTB/Delivery/infopanel.jpg"
 ---
-
-![](/assets/CTFs/HTB/Delivery/infopanel.png)
 
 ## Ports
 ```

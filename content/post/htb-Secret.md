@@ -1,10 +1,10 @@
 ---
+title: 'HackTheBox | Secret'
 date: "2022-03-26T00:00:00Z"
 tags: [hackthebox,linux,nodejs,jwt]
-title: '[Writeup] HackTheBox | Secret'
+cover:
+    image: /assets/CTFs/HTB/Secret/infopanel.jpg
 ---
-
-![](/assets/CTFs/HTB/Secret/infopanel.png){: .modal}
 
 ## Information Gathering
 
@@ -158,7 +158,7 @@ index fb6f587..31db370 100644
 And we see a secret! Now we can use this so sign the JWT-token. The contents of the token will be ``{"name":"theadmin"}``.
 I used an online tool to generate the JWT-token and this is my result *eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGhlYWRtaW4ifQ.GDRG1ileUj55S0ZdAAZhtUz28Hz4s7fHgqbiES5Qr7s*
 
-![](/assets/CTFs/HTB/Secret/jwt-generate.png){: .modal}
+![](/assets/CTFs/HTB/Secret/jwt-generate.png)
 
 Now if we set the `auth-token` header to our generated JWT-token and go to `/api/priv` it shows us that we are the  `"theadmin"`.
 

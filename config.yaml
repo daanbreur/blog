@@ -1,7 +1,7 @@
 baseURL: https://blog.daanbreur.systems
 disablePathToLower: true
 languageCode: en-us
-title: daanbreur
+title: Daanbreur's Blog
 theme: PaperMod
 
 enableRobotsTXT: true
@@ -17,16 +17,18 @@ params:
   keywords: [Blog, Cybersecurity, Hacking, Programming, HackTheBox]
   author: Me
   
-  DateFormat: "2 January 2006"
+  DateFormat: "January 2, 2006"
 
   defaultTheme: dark
   disableThemeToggle: false
 
   ShowReadingTime: true
   ShowShareButtons: true
+  ShareButtons: ["linkedin", "twitter"]
+
   ShowPostNavLinks: true
   ShowBreadCrumbs: true
-  ShowCodeCopyButtons: false
+  ShowCodeCopyButtons: true
   ShowWordCount: true
   ShowRssButtonInSectionTermList: true
   UseHugoToc: true
@@ -34,7 +36,7 @@ params:
   disableScrollToTop: false
   comments: false
   hidemeta: false
-  hideSummary: false
+  hideSummary: true
   showtoc: false
   tocopen: false
 
@@ -69,7 +71,7 @@ params:
   cover:
     hidden: true # hide everywhere but not in structured data
     hiddenInList: true # hide on list pages and home
-    hiddenInSingle: true # hide on single page
+    hiddenInSingle: false # hide on single page
 
   # editPost:
   #   URL: "https://github.com/daanbreur/blog/content"
