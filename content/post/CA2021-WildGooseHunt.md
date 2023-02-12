@@ -2,6 +2,7 @@
 title: 'CyberApocolypse 2021 | Wild Goose Hunt'
 date: "2021-04-24T00:00:00Z"
 tags: [web,nosqlinjection,mongodb]
+categories: [CTF]
 points: 300
 solves: 515
 ---

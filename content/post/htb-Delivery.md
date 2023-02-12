@@ -2,6 +2,7 @@
 title: 'HackTheBox | Delivery'
 date: "2021-05-28T00:00:00Z"
 tags: [hackthebox,linux,web,passwordreuse,misconfiguration,delivery]
+categories: [HackTheBox]
 cover:
     image: "/assets/CTFs/HTB/Delivery/infopanel.jpg"
 ---

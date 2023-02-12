@@ -2,6 +2,7 @@
 title: 'CyberApocolypse 2021 | Authenticator'
 date: "2021-04-24T00:00:00Z"
 tags: [reversing,encryption]
+categories: [CTF]
 points: 300
 solves: 988
 ---

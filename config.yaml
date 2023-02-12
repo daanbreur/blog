@@ -5,7 +5,7 @@ title: Daanbreur's Blog
 theme: PaperMod
 
 enableRobotsTXT: true
-buildDrafts: false
+buildDrafts: true
 buildFuture: false
 buildExpired: false
 

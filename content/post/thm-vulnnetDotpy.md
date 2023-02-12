@@ -1,5 +1,6 @@
 ---
 title: 'TryHackMe | VulnNet: dotpy'
+aliases: ["/2021/04/11/thm-vulnnetdotpy.html"]
 date: "2021-04-11T00:00:00Z"
 tags: [tryhackme,web,python,jinja2,pathhijacking]
 ---

@@ -2,6 +2,7 @@
 title: 'Pentesting | XSS in the Pixelplush Scoreboard'
 date: "2021-05-25T00:00:00Z"
 tags: [xss,pixelplush]
+categories: [Pentests]
 ---
 
 This writeup is about the **XSS in the [PixelPlush](https://pixelplush.dev) Scoreboard**. 

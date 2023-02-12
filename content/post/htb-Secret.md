@@ -1,7 +1,9 @@
 ---
 title: 'HackTheBox | Secret'
+aliases: ["/2022/03/26/htb-secret.html"]
 date: "2022-03-26T00:00:00Z"
 tags: [hackthebox,linux,nodejs,jwt]
+categories: [HackTheBox]
 cover:
     image: /assets/CTFs/HTB/Secret/infopanel.jpg
 ---

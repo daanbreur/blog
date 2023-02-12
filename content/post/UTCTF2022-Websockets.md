@@ -2,6 +2,7 @@
 title: 'UTCTF 2022 | Websockets?'
 date: "2022-03-15T00:00:00Z"
 tags: [websocket,authentication,bruteforcing]
+categories: [CTF]
 cover:
     image: "/assets/CTFs/UTCTF2022/Websockets/challenge_info.png"
 points: 335
