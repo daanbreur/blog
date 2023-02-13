@@ -2,7 +2,7 @@
 draft: false
 title: 'HackTheBox | Photobomb'
 date: "2023-01-17T00:00:00Z"
-tags: [hackthebox,linux,web,python,javascript,misconfiguration,delivery]
+tags: [hackthebox,linux,web,javascript,environment,photobomb]
 categories: [HackTheBox]
 cover:
     image: "/assets/CTFs/HTB/Photobomb/infopanel.jpg"
