@@ -4,6 +4,8 @@ languageCode: en-us
 title: Daanbreur's Blog
 theme: PaperMod
 
+googleAnalytics: G-W5MMZ6FK4P
+
 enableRobotsTXT: true
 buildDrafts: true
 buildFuture: false
