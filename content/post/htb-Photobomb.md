@@ -22,8 +22,9 @@ I will be using ParrotOS a Linux operating system to hack this box.
 Lets get hacking!
 
 ## Port scan
-We already know the ip-address of this machine for the hackthebox network. Which is `10.10.11.182`
+We already know the ip-address of this machine on the hackthebox network. Which is `10.10.11.182`
 First we need to check what ports are open on the machine.
+
 > In computer networking, a port or port number is a number assigned to uniquely identify a connection endpoint and to direct data to a specific service.
 >
 > https://en.wikipedia.org/wiki/Port_(computer_networking)
