@@ -1,7 +1,7 @@
 ---
-title: 'CyberApocolypse 2021 | Wild Goose Hunt'
+title: "CyberApocalypse 2021 | Wild Goose Hunt"
 date: "2021-04-24T00:00:00Z"
-tags: [web,nosqlinjection,mongodb]
+tags: [web, nosqlinjection, mongodb]
 categories: [CTF]
 points: 300
 solves: 515
@@ -9,9 +9,9 @@ solves: 515
 
 Solves: {{ page.solves }} \| Points: {{ page.points }}
 
-The webpage is just an username and password input field. 
-After checking the source that we could download we were able to discover that the password of the admin user is also the *flag*.
-Also we see that its a *mongodb database*, Maybe we have to do some *nosqlinjection*, after using burp to check the request we see its not using json but urlencoded formdata.
+The webpage is just an username and password input field.
+After checking the source that we could download we were able to discover that the password of the admin user is also the _flag_.
+Also we see that its a _mongodb database_, Maybe we have to do some _nosqlinjection_, after using burp to check the request we see its not using json but urlencoded formdata.
 
 After searching for a poc i found that you can use `password[%24regex]=` to check with an regex, if you just use `^.*` as regex it will pass because it matches everything.
 This way we can leak the password because if you put a character that isn't in in that place in the password in front of the `.*` it will fail, if its in the password it will pass.
@@ -46,6 +46,7 @@ while Solved != True:
 print("")
 print(f"[FLAG] The flag is: {workString}")
 ```
+
 ^ A download for this script can be found [here](/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solve.py)
 
 Now that the solver is running ill explain what it does.
@@ -55,13 +56,12 @@ This code will loop over every character, if the character is correct than it wi
 Then it will go the the next place in the password and try every character, until the last character is found.
 It knows if its correct by checking if the `logged` value in the returned jsondata is `1`.
 
-
 After running the script it found the flag.
-**CHTB{1_th1nk_the_4l1ens_h4ve_n0t_used_m0ng0_b3f0r3}** 
+**CHTB{1_th1nk_the_4l1ens_h4ve_n0t_used_m0ng0_b3f0r3}**
 ![](/assets/CTFs/CyberApocolypse2021/WideGooseHunt/solver_done.png)
-
 
 Thanks for reading my writeup!
 
 ---
+
 sources: [NOSQL INJECTION OPERATORS](https://infosecwriteups.com/nosql-injection-8732c2140576)
